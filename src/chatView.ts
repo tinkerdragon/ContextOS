@@ -777,7 +777,7 @@ class RenameConversationModal extends Modal {
     new Setting(this.contentEl).addText((text) => {
       text.setValue(this.initial);
       text.onChange((value) => { this.value = value; });
-      const inputEl = text.inputEl as HTMLInputElement;
+      const inputEl = text.inputEl;
       inputEl.addEventListener?.("keydown", (event: KeyboardEvent) => {
         if (event.key === "Enter") {
           event.preventDefault();

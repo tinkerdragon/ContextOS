@@ -716,7 +716,8 @@ const pdfParser: RawParser = {
     const pdfJs = await loadPdfJs() as PdfJs;
     const data = new Uint8Array(await app.vault.readBinary(file));
     const document = await pdfJs.getDocument({ data }).promise;
-    const pages: string[] = new Array(document.numPages);
+    const numPages: number = document.numPages;
+    const pages: string[] = new Array(numPages);
     const ocrPages: Array<{ pageNumber: number; page: PdfPage }> = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
       const page = await document.getPage(pageNumber);

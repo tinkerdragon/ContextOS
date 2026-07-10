@@ -54,7 +54,7 @@ function extractJson(text: string, open: string, close: string, isValid: (value:
   const stripped = stripFence(text);
   // Common case: the reply is exactly the JSON (optionally fenced) — unambiguous.
   try {
-    const whole = JSON.parse(stripped);
+    const whole: unknown = JSON.parse(stripped);
     if (isValid(whole)) return whole;
   } catch {
     // Not pure JSON — fall through to the balanced region scan.
@@ -63,7 +63,7 @@ function extractJson(text: string, open: string, close: string, isValid: (value:
   let result: unknown;
   for (const region of topLevelRegions(stripped, open, close)) {
     try {
-      const value = JSON.parse(region);
+      const value: unknown = JSON.parse(region);
       if (isValid(value)) result = value;
     } catch {
       // Not JSON — ignore this region.

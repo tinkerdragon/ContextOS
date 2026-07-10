@@ -81,10 +81,9 @@ PDFs and PPTX files are parsed directly when they contain readable text. PDF pag
 3. Copy the files from `build/` into your Obsidian vault plugin directory:
 
    ```text
-   build/main.js        → <your-vault>/.obsidian/plugins/contextos/main.js
-   build/styles.css     → <your-vault>/.obsidian/plugins/contextos/styles.css
-   build/manifest.json  → <your-vault>/.obsidian/plugins/contextos/manifest.json
-   build/deps/          → <your-vault>/.obsidian/plugins/contextos/deps/
+   build/main.js       → <your-vault>/.obsidian/plugins/contextos/main.js
+   build/styles.css    → <your-vault>/.obsidian/plugins/contextos/styles.css
+   build/manifest.json → <your-vault>/.obsidian/plugins/contextos/manifest.json
    ```
 
 4. Enable **ContextOS** in Obsidian community plugin settings.
@@ -239,4 +238,4 @@ Build:
 npm run build
 ```
 
-The generated `build/` directory is intentionally ignored by git and should not be committed.
+The generated `main.js` is intentionally ignored by git and should not be committed.

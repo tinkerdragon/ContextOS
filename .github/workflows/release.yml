@@ -29,7 +29,6 @@ jobs:
             build/main.js
             build/styles.css
             build/manifest.json
-            build/deps/*.js
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -37,4 +36,3 @@ jobs:
             build/main.js
             build/styles.css
             build/manifest.json
-            build/deps/*.js
