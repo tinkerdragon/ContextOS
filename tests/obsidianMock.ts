@@ -485,7 +485,7 @@ function createMockElement() {
       if (options?.cls) child.addClass(options.cls);
       return child;
     },
-    createDiv() {
+    createDiv(options?: { text?: string; cls?: string }) {
       const child = createMockElement();
       child.buttons = element.buttons;
       child.toggles = element.toggles;
@@ -495,9 +495,11 @@ function createMockElement() {
       child.classes = element.classes;
       child.styles = element.styles;
       child.style = element.style;
+      if (options?.text) element.texts.push(options.text);
+      if (options?.cls) child.addClass(options.cls);
       return child;
     },
-    createSpan() {
+    createSpan(options?: { text?: string; cls?: string }) {
       const child = createMockElement();
       child.buttons = element.buttons;
       child.toggles = element.toggles;
@@ -507,6 +509,8 @@ function createMockElement() {
       child.classes = element.classes;
       child.styles = element.styles;
       child.style = element.style;
+      if (options?.text) element.texts.push(options.text);
+      if (options?.cls) child.addClass(options.cls);
       return child;
     },
     setText(text?: string) {

@@ -79,10 +79,10 @@ export class ChangePlanPreviewModal extends Modal {
 
       const header = section.createDiv();
       header.addClass("contextos-operation-header");
-      const badge = header.createEl("span", { text: this.getOperationLabel(operation.kind) });
+      const badge = header.createSpan({ text: this.getOperationLabel(operation.kind) });
       badge.addClass("contextos-operation-badge");
       badge.addClass(`contextos-operation-${operation.kind}`);
-      const path = header.createEl("span", { text: operation.path });
+      const path = header.createSpan({ text: operation.path });
       path.addClass("contextos-path-pill");
 
       section.createEl("p", { text: operation.rationale });
@@ -141,7 +141,7 @@ export class ChangePlanPreviewModal extends Modal {
   }
 
   private addStatChip(container: HTMLElement, text: string): void {
-    const chip = container.createEl("span", { text });
+    const chip = container.createSpan({ text });
     chip.addClass("contextos-stat-chip");
   }
 

@@ -177,9 +177,9 @@ export class ChatView extends ItemView {
 
     const heading = header.createDiv();
     heading.addClass("contextos-chat-heading");
-    this.titleEl = heading.createEl("div");
+    this.titleEl = heading.createDiv();
     this.titleEl.addClass("contextos-chat-title");
-    const subtitle = heading.createEl("div", { text: t("chat.subtitle") });
+    const subtitle = heading.createDiv({ text: t("chat.subtitle") });
     subtitle.addClass("contextos-chat-subtitle");
 
     const newChat = header.createEl("button");
@@ -217,7 +217,7 @@ export class ChatView extends ItemView {
     this.historyRowEls = [];
 
     if (this.conversations.length === 0) {
-      const empty = this.historyEl.createEl("div", { text: t("chat.historyEmpty") });
+      const empty = this.historyEl.createDiv({ text: t("chat.historyEmpty") });
       empty.addClass("contextos-chat-history-empty");
       this.historyRowEls.push(empty);
       return;
@@ -338,12 +338,12 @@ export class ChatView extends ItemView {
     badge.addClass("contextos-chat-empty-icon");
     setIcon(badge, "message-circle");
 
-    const title = empty.createEl("div", { text: t("chat.emptyTitle") });
+    const title = empty.createDiv({ text: t("chat.emptyTitle") });
     title.addClass("contextos-chat-empty-title");
-    const subtitle = empty.createEl("div", { text: t("chat.emptyState") });
+    const subtitle = empty.createDiv({ text: t("chat.emptyState") });
     subtitle.addClass("contextos-chat-empty-subtitle");
 
-    const label = empty.createEl("div", { text: t("chat.suggestionsLabel") });
+    const label = empty.createDiv({ text: t("chat.suggestionsLabel") });
     label.addClass("contextos-chat-suggestions-label");
 
     const suggestions = empty.createDiv();
@@ -380,7 +380,7 @@ export class ChatView extends ItemView {
     main.addClass("contextos-chat-main");
 
     if (message.role === "assistant") {
-      const name = main.createEl("div", { text: t("chat.assistant") });
+      const name = main.createDiv({ text: t("chat.assistant") });
       name.addClass("contextos-chat-name");
     }
 
@@ -622,7 +622,7 @@ export class ChatView extends ItemView {
     // send path be awaited directly in tests.
     this.sendButton.onclick = () => this.handleSend();
 
-    const hint = composer.createEl("div", { text: t("chat.inputHint") });
+    const hint = composer.createDiv({ text: t("chat.inputHint") });
     hint.addClass("contextos-chat-hint");
   }
 
@@ -667,7 +667,7 @@ export class ChatView extends ItemView {
     const main = row.createDiv();
     main.addClass("contextos-chat-main");
 
-    const name = main.createEl("div", { text: t("chat.assistant") });
+    const name = main.createDiv({ text: t("chat.assistant") });
     name.addClass("contextos-chat-name");
 
     const body = main.createDiv();

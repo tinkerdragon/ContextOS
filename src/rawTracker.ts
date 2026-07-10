@@ -18,6 +18,7 @@ export type { ImageOcrProvider, ImageOcrRequest, PdfOcrProvider, PdfOcrRequest }
 
 export async function renderPdfPageToPngDataUrl(page: PdfPage, scale = 2): Promise<string> {
   const viewport = page.getViewport({ scale });
+  // eslint-disable-next-line obsidianmd/prefer-create-el
   const canvas = activeDocument.createElement("canvas");
   canvas.width = viewport.width;
   canvas.height = viewport.height;
