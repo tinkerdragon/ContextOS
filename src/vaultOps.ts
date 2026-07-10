@@ -132,7 +132,7 @@ async function rollback(app: App, snapshots: FileSnapshot[]): Promise<void> {
           await app.vault.create(snapshot.path, snapshot.content);
         }
       } else if (existing instanceof TFile) {
-        await app.vault.delete(existing);
+        await app.fileManager.trashFile(existing);
       }
     } catch {
       // Ignore individual rollback failures; restore as much as possible.
@@ -144,7 +144,7 @@ async function applyOperation(app: App, operation: FileOperation): Promise<void>
   const path = ensureMarkdownPath(operation.path);
   if (operation.kind === "delete") {
     const target = app.vault.getAbstractFileByPath(path);
-    if (target instanceof TFile) await app.vault.delete(target);
+    if (target instanceof TFile) await app.fileManager.trashFile(target);
     return;
   }
   await ensureParentFolders(app, path);

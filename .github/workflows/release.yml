@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            build/main.js
+            build/styles.css
+            build/manifest.json
+            build/deps/*.js
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/main.js
+            build/styles.css
+            build/manifest.json
+            build/deps/*.js

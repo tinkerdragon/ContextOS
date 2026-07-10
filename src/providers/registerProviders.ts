@@ -5,15 +5,6 @@ import { GeminiProvider } from "./GeminiProvider";
 import { OllamaProvider } from "./OllamaProvider";
 import { DeepSeekProvider } from "./DeepSeekProvider";
 import { GroqProvider } from "./GroqProvider";
-import { BaseOpenAICompatibleProvider } from "./BaseOpenAICompatibleProvider";
-import { ProviderConfig } from "../types";
-import { LLMProvider } from "./LLMProvider";
-
-function openAICompatibleFactory(config: ProviderConfig, timeoutMs?: number): LLMProvider {
-  return new (BaseOpenAICompatibleProvider as unknown as new (httpClient: unknown, options: unknown) => LLMProvider)(
-    undefined, { timeoutMs }
-  ) as unknown as LLMProvider;
-}
 
 export function registerBuiltinProviders(): void {
   providerRegistry.register({

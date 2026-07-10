@@ -72,7 +72,7 @@ export class GeminiProvider implements LLMProvider {
           if (text) {
             accumulated += text;
             onToken(text);
-            await new Promise((resolve) => setTimeout(resolve, 0));
+            await new Promise((resolve) => window.setTimeout(resolve, 0));
           }
         } catch {
           // Skip unparseable chunks

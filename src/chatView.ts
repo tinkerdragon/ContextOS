@@ -46,7 +46,7 @@ const INPUT_MAX_HEIGHT_PX = 200;
 const TITLE_MAX_LEN = 48;
 
 function createConversationId(): string {
-  const cryptoObj = (globalThis as { crypto?: { randomUUID?(): string } }).crypto;
+  const cryptoObj = (window as { crypto?: { randomUUID?(): string } }).crypto;
   if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
   return `c-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
 }
@@ -522,7 +522,7 @@ export class ChatView extends ItemView {
   }
 
   private async handleCopy(text: string, button: HTMLButtonElement): Promise<void> {
-    const clipboard = (globalThis as { navigator?: { clipboard?: { writeText?(value: string): Promise<void> } } })
+    const clipboard = (window as { navigator?: { clipboard?: { writeText?(value: string): Promise<void> } } })
       .navigator?.clipboard;
     if (!clipboard?.writeText) return;
     try {
@@ -531,7 +531,7 @@ export class ChatView extends ItemView {
       button.addClass("is-copied");
       button.setAttr("aria-label", t("chat.copied"));
       button.setAttr("title", t("chat.copied"));
-      setTimeout(() => {
+      window.setTimeout(() => {
         if (this.closed) return; // view torn down before the icon reset fired
         setIcon(button, "copy");
         button.removeClass("is-copied");
@@ -784,7 +784,7 @@ class RenameConversationModal extends Modal {
           this.settle(this.value);
         }
       });
-      setTimeout(() => inputEl.focus?.(), 0);
+      window.setTimeout(() => inputEl.focus?.(), 0);
     });
     new Setting(this.contentEl).addButton((button) => {
       button.setButtonText(t("chat.rename"));

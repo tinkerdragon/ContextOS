@@ -103,13 +103,16 @@ test("uses vision OCR fallback for scanned PDFs before ingesting", async () => {
       })
     })
   });
-  (globalThis as unknown as { document: { createElement(tag: string): unknown } }).document = {
-    createElement: () => ({
-      width: 0,
-      height: 0,
-      getContext: () => ({}),
-      toDataURL: () => "data:image/png;base64,page-image"
-    })
+  (globalThis as unknown as { activeDocument: { createElement(tag: string): unknown } }).activeDocument = {
+    createElement: (tag: string) => {
+      if (tag === "canvas") return {
+        width: 0,
+        height: 0,
+        getContext: () => ({}),
+        toDataURL: () => "data:image/png;base64,page-image"
+      };
+      return {} as any;
+    }
   };
   const requestSpy = jest.spyOn(obsidian, "requestUrl")
     .mockResolvedValueOnce({

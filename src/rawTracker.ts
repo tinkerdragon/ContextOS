@@ -1,4 +1,4 @@
-import * as JSZip from "jszip";
+import { getJSZip } from "./loaders";
 import { App, TFile } from "obsidian";
 import { LLMWikiSettings, RawFileState, RawFileStateEntry } from "./types";
 import { normalizePath } from "./changePlan";
@@ -18,7 +18,7 @@ export type { ImageOcrProvider, ImageOcrRequest, PdfOcrProvider, PdfOcrRequest }
 
 export async function renderPdfPageToPngDataUrl(page: PdfPage, scale = 2): Promise<string> {
   const viewport = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
+  const canvas = activeDocument.createElement("canvas");
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   const context = canvas.getContext("2d");
@@ -104,7 +104,7 @@ function isIgnoredOpenXmlEntry(path: string): boolean {
 }
 
 export async function hashOpenXmlContent(buffer: ArrayBuffer): Promise<string> {
-  const archive = await JSZip.loadAsync(buffer);
+  const archive = await getJSZip().loadAsync(buffer);
   const parts: string[] = [];
   for (const path of Object.keys(archive.files).sort()) {
     const file = archive.files[path];
@@ -160,7 +160,7 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T,
 
 async function scanRawFile(
   app: App,
-  file: RawCandidateFile,
+  file: TFile,
   state: Record<string, StoredRawFileEntry>,
   onPdfExtract?: (path: string) => void,
   pdfOcrProvider?: PdfOcrProvider,
@@ -169,15 +169,10 @@ async function scanRawFile(
 ): Promise<RawFileScan> {
   const stat = readRawFileStat(file);
   const recorded = normalizeRawFileEntry(state[file.path]);
-  // Fast-path: unchanged mtime+size means unchanged content, so skip read/hash entirely.
-  // Limitation: a content change that preserves BOTH mtime and size (e.g. an in-place
-  // same-length edit, or a sync tool run with --times) is not detected here.
   if (recorded && stat && recorded.mtime === stat.mtime && recorded.size === stat.size) {
     return {};
   }
 
-  // Content is confirmed unchanged but stat drifted (or was legacy/absent): refresh the
-  // recorded mtime/size so the fast-path can engage next scan instead of re-hashing forever.
   const restamp = (hash: string): RawFileScan => (stat ? { stamp: { hash, mtime: stat.mtime, size: stat.size } } : {});
   const changed = (content: string, hash: string): RawFileScan => ({
     changed: { path: file.path, content, hash, mtime: stat?.mtime, size: stat?.size }
@@ -186,20 +181,20 @@ async function scanRawFile(
   const matchesRecorded = (hash: string): boolean => !!recorded && hashMatchesRecorded(recorded.hash, hash);
 
   if (isOpenXmlRawPath(file.path)) {
-    const binaryBuffer = await app.vault.readBinary(file as TFile);
+    const binaryBuffer = await app.vault.readBinary(file);
     const hash = await hashOpenXmlContent(binaryBuffer);
     if (matchesRecorded(hash)) return restamp(hash);
-    return changed(await readRawFileContent(app, file as TFile, onPdfExtract, pdfOcrProvider, imageOcrProvider, ocrPageConcurrency), hash);
+    return changed(await readRawFileContent(app, file, onPdfExtract, pdfOcrProvider, imageOcrProvider, ocrPageConcurrency), hash);
   }
 
   if (isImageRawPath(file.path) || isPdfRawPath(file.path) || isBinaryOfficeRawPath(file.path)) {
-    const binaryBuffer = await app.vault.readBinary(file as TFile);
+    const binaryBuffer = await app.vault.readBinary(file);
     const hash = hashBinaryContent(binaryBuffer);
     if (matchesRecorded(hash)) return restamp(hash);
-    return changed(await readRawFileContent(app, file as TFile, onPdfExtract, pdfOcrProvider, imageOcrProvider, ocrPageConcurrency), hash);
+    return changed(await readRawFileContent(app, file, onPdfExtract, pdfOcrProvider, imageOcrProvider, ocrPageConcurrency), hash);
   }
 
-  const content = await readRawFileContent(app, file as TFile, onPdfExtract, pdfOcrProvider, imageOcrProvider, ocrPageConcurrency);
+  const content = await readRawFileContent(app, file, onPdfExtract, pdfOcrProvider, imageOcrProvider, ocrPageConcurrency);
   const hash = hashContent(content);
   return matchesRecorded(hash) ? restamp(hash) : changed(content, hash);
 }
@@ -216,7 +211,7 @@ export async function findChangedRawFiles(
   const ocrPageConcurrency = settings.ocrPageConcurrency;
   // Isolate per-file failures: one corrupt/unreadable file (or a failed OCR call) must not
   // abort the whole scan or discard siblings' results.
-  const outcomes = await mapWithConcurrency<RawCandidateFile, RawFileScanOutcome>(rawFiles, RAW_SCAN_CONCURRENCY, async (file) => {
+  const outcomes = await mapWithConcurrency<TFile, RawFileScanOutcome>(rawFiles, RAW_SCAN_CONCURRENCY, async (file) => {
     try {
       return { path: file.path, scan: await scanRawFile(app, file, state, onPdfExtract, pdfOcrProvider, imageOcrProvider, ocrPageConcurrency) };
     } catch (error) {

@@ -8,7 +8,8 @@ jest.mock("word-extractor", () => {
       getBody: () => "  Legacy DOC text\n"
     }))
   }));
-  return { __esModule: true, default: mockWordExtractor };
+  (mockWordExtractor as any).default = mockWordExtractor;
+  return mockWordExtractor;
 });
 
 jest.mock("@e965/xlsx", () => ({

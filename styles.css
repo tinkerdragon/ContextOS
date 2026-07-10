@@ -875,3 +875,13 @@
   font-weight: 600;
   color: var(--text-muted);
 }
+
+.contextos-collapsed {
+  display: none;
+}
+
+.contextos-key-textarea {
+  width: 100%;
+  height: 100px;
+  resize: vertical;
+}

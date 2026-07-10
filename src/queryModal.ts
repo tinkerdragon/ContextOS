@@ -24,7 +24,7 @@ export class QuestionInputModal extends Modal {
           this.settle(this.value);
         }
       });
-      setTimeout(() => inputEl.focus?.(), 0);
+      window.setTimeout(() => inputEl.focus?.(), 0);
     });
     new Setting(this.contentEl).addButton((button) => {
       button.setButtonText(t("prompt.querySubmit"));

@@ -1,5 +1,5 @@
 import { ChatRequest, CompleteRequest, ConnectionTestRequest, VisionCompleteRequest } from "./LLMProvider";
-import { BaseOpenAICompatibleProvider, DEFAULT_OPENAI_API_URL, ProviderError, BaseProviderOptions, HttpClient, defaultHttpClient, parseOpenAIResponse } from "./BaseOpenAICompatibleProvider";
+import { BaseOpenAICompatibleProvider, DEFAULT_OPENAI_API_URL, ProviderError, BaseProviderOptions, HttpClient, defaultHttpClient } from "./BaseOpenAICompatibleProvider";
 
 export class OpenAIProviderError extends ProviderError {
   constructor(kind: "connection" | "request" | "missing-content" | "invalid-json" | "truncated" | "timeout", message: string) {

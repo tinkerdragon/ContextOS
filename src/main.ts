@@ -33,7 +33,7 @@ export default class LLMWikiPlugin extends Plugin implements ChatController {
   // status bar is only reset to idle when the last one finishes (not the first).
   private answerChatInFlight = 0;
   private statusBarItem?: HTMLElement;
-  private autoIngestTimer?: ReturnType<typeof setTimeout>;
+  private autoIngestTimer?: number;
   private autoIngestEventRefs: EventRef[] = [];
   private autoIngestRunning = false;
   private autoIngestPending = false;
@@ -190,8 +190,8 @@ export default class LLMWikiPlugin extends Plugin implements ChatController {
   private scheduleAutoIngest(file: TAbstractFile): void {
     if (!(file instanceof TFile)) return;
     if (!findRawFileCandidates([file], this.settings).sourceFiles.includes(file)) return;
-    if (this.autoIngestTimer) clearTimeout(this.autoIngestTimer);
-    this.autoIngestTimer = setTimeout(() => {
+    if (this.autoIngestTimer) window.clearTimeout(this.autoIngestTimer);
+    this.autoIngestTimer = window.setTimeout(() => {
       void this.runAutoIngest();
     }, this.settings.autoIngestDebounceMs);
   }
@@ -337,7 +337,7 @@ ${file.content}`).join("\n");
       await rightLeaf.setViewState({ type: CHAT_VIEW_TYPE, active: true });
       leaf = rightLeaf;
     }
-    workspace.revealLeaf(leaf);
+    await workspace.revealLeaf(leaf);
   }
 
   hasApiKey(): boolean {

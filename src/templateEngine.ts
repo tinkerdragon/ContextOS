@@ -1,5 +1,5 @@
-import { LLMWikiSettings, WikiContext } from "./types";
-import { t, getOutputLanguageName } from "./i18n";
+import { LLMWikiSettings } from "./types";
+import { getOutputLanguageName } from "./i18n";
 
 const BUILTIN_INGEST_SYSTEM = `You maintain a persistent LLM Wiki inside an Obsidian vault. The wiki is a structured, interlinked collection of markdown files that accumulates knowledge over time. Obsidian is the IDE; you are the programmer; the wiki is the codebase. Raw sources are immutable — you read from them but never modify them.
 

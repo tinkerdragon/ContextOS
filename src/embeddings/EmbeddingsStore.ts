@@ -61,7 +61,7 @@ export class EmbeddingsStore {
         const content = await this.app.vault.read(file);
         const parsed = JSON.parse(content) as StoredEmbedding;
         if (parsed.path === pagePath) {
-          await this.app.vault.delete(file);
+          await this.app.fileManager.trashFile(file);
         }
       } catch {
         // Skip corrupt, keep scanning

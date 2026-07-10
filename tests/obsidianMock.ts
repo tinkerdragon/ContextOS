@@ -6,7 +6,14 @@ type LocalStorageLike = {
 
 function ensureWindowLocalStorage(): LocalStorageLike {
   const globalWindow = globalThis as {
-    window?: { localStorage?: LocalStorageLike; setInterval?: unknown; clearInterval?: unknown };
+    window?: {
+      localStorage?: LocalStorageLike;
+      setInterval?: unknown;
+      clearInterval?: unknown;
+      setTimeout?: typeof setTimeout;
+      clearTimeout?: typeof clearTimeout;
+      require?: NodeJS.Require;
+    };
   };
   if (!globalWindow.window) globalWindow.window = {};
   if (!globalWindow.window.localStorage) {
@@ -17,10 +24,28 @@ function ensureWindowLocalStorage(): LocalStorageLike {
       removeItem: (key) => { delete store[key]; }
     };
   }
-  // No-op timer stubs: return a fake id and never actually schedule, so polling intervals
-  // registered during tests do not leak real timers or keep the process alive.
   if (!globalWindow.window.setInterval) globalWindow.window.setInterval = () => 0;
   if (!globalWindow.window.clearInterval) globalWindow.window.clearInterval = () => undefined;
+  // Delegate setTimeout/clearTimeout to Node's real timers so the test runtime controls them via jest.useFakeTimers
+  if (!globalWindow.window.setTimeout) globalWindow.window.setTimeout = ((fn: () => void, ms?: number) => (setTimeout(fn, ms) as unknown as number)) as unknown as typeof setTimeout;
+  if (!globalWindow.window.clearTimeout) globalWindow.window.clearTimeout = ((id: number) => { clearTimeout(id); }) as unknown as typeof clearTimeout;
+  // Expose Node's require on the window mock so loaders.ts can use window.require in the test env
+  if (!globalWindow.window.require) {
+    globalWindow.window.require = (require as unknown as NodeJS.Require);
+  }
+  // Mock activeDocument for popout-compatible DOM access
+  if (!(globalThis as any).activeDocument) {
+    (globalThis as any).activeDocument = {
+      createElement: (tag: string) => {
+        if (tag === "canvas") return {
+          width: 0, height: 0,
+          getContext: () => ({}) as any,
+          toDataURL: () => "data:image/png;base64,"
+        };
+        return {} as any;
+      }
+    };
+  }
   return globalWindow.window.localStorage;
 }
 

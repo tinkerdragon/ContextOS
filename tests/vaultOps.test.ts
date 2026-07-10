@@ -17,6 +17,7 @@ test("creates missing parent folders before creating files", async () => {
   const createdFiles: Array<{ path: string; content: string }> = [];
   const existing = new Set<string>();
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => existing.has(path) ? { path } : null,
       createFolder: async (path: string) => {
@@ -49,6 +50,7 @@ test("prepends content before an existing markdown file", async () => {
     target.content = content;
   });
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => existing.get(path) ?? null,
       read: async (target: obsidian.TFile & { content: string }) => target.content,
@@ -69,6 +71,7 @@ test("prepends content before an existing markdown file", async () => {
 test("listMarkdownFilePaths returns wiki page paths without reading content", () => {
   const read = jest.fn();
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getMarkdownFiles: () => [{ path: "wiki/a.md" }, { path: "wiki/b.md" }, { path: "raw/c.md" }],
       read
@@ -86,6 +89,7 @@ test("readWikiPages reads only the requested existing pages", async () => {
   const store = new Map<string, string>([["wiki/a.md", "A"], ["wiki/b.md", "B"]]);
   const readPaths: string[] = [];
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => (store.has(path) ? new TFileMock(path) : null),
       read: async (file: { path: string }) => {
@@ -106,6 +110,7 @@ test("deletes an existing wiki file for a delete operation", async () => {
   const store = new Map<string, string>([["wiki/orphan.md", "old"]]);
   const deleted: string[] = [];
   const app = {
+    fileManager: { trashFile: jest.fn(async (file: { path: string }) => { deleted.push(file.path); store.delete(file.path); }) },
     vault: {
       getAbstractFileByPath: (path: string) => (store.has(path) ? new TFileMock(path) : null),
       read: async (file: { path: string }) => store.get(file.path) ?? "",
@@ -130,6 +135,7 @@ test("restores a deleted file when a later operation fails", async () => {
   const TFileMock = obsidian.TFile as unknown as { new(path: string): obsidian.TFile };
   const store = new Map<string, string>([["wiki/orphan.md", "keep-me"]]);
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => (store.has(path) ? new TFileMock(path) : null),
       read: async (file: { path: string }) => store.get(file.path) ?? "",
@@ -159,6 +165,7 @@ test("pre-validates the plan and writes nothing when a create targets an existin
   const store = new Map<string, string>([["wiki/exists.md", "e"]]);
   const created: string[] = [];
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => (store.has(path) ? new TFileMock(path) : null),
       read: async (file: { path: string }) => store.get(file.path) ?? "",
@@ -183,6 +190,7 @@ test("pre-validates the plan and writes nothing when a create targets an existin
 test("pre-validates the plan and writes nothing when a delete targets a missing file", async () => {
   const deleted: string[] = [];
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: () => null,
       read: async () => "",
@@ -205,6 +213,7 @@ test("pre-validates the plan and rejects a delete and a write on the same path",
   const TFileMock = obsidian.TFile as unknown as { new(path: string): obsidian.TFile };
   const store = new Map<string, string>([["wiki/a.md", "keep"]]);
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => (store.has(path) ? new TFileMock(path) : null),
       read: async (file: { path: string }) => store.get(file.path) ?? "",
@@ -223,12 +232,13 @@ test("pre-validates the plan and rejects a delete and a write on the same path",
     ]
   })).rejects.toThrow();
 
-  expect(app.vault.delete).not.toHaveBeenCalled();
+  expect(app.fileManager.trashFile).not.toHaveBeenCalled();
   expect(app.vault.modify).not.toHaveBeenCalled();
 });
 
 test("rejects writing to a path occupied by a folder", async () => {
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => (path === "wiki/foo.md" ? { path } : null),
       read: async () => "",
@@ -253,6 +263,7 @@ test("rolls back created and modified files when a later operation fails", async
   const store = new Map<string, string>([["wiki/b.md", "original-b"]]);
   const deleted: string[] = [];
   const app = {
+    fileManager: { trashFile: jest.fn(async (file: { path: string }) => { deleted.push(file.path); store.delete(file.path); }) },
     vault: {
       getAbstractFileByPath: (path: string) => (store.has(path) ? new TFileMock(path) : null),
       read: async (file: { path: string }) => store.get(file.path) ?? "",
@@ -286,6 +297,7 @@ test("creates missing markdown file for prepend operations", async () => {
     existing.set(path, { path, content });
   });
   const app = {
+    fileManager: { trashFile: jest.fn() },
     vault: {
       getAbstractFileByPath: (path: string) => existing.get(path) ?? null,
       read: jest.fn(),

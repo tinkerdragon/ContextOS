@@ -111,7 +111,7 @@ export function getActiveProviderConfig(settings: LLMWikiSettings): ProviderConf
 
 export class LLMWikiSettingTab extends PluginSettingTab {
   plugin: LLMWikiPlugin;
-  private autoTestTimer: ReturnType<typeof setTimeout> | null = null;
+  private autoTestTimer: number | null = null;
 
   constructor(app: App, plugin: LLMWikiPlugin) {
     super(app, plugin);
@@ -168,7 +168,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     const routingContainer = this.containerEl.createDiv();
     routingContainer.addClass("contextos-routing-bar");
 
-    routingContainer.createEl("h4", { text: t("settings.operationRouting.name") });
+    new Setting(routingContainer).setName(t("settings.operationRouting.name")).setHeading();
 
     this.addRoutingDropdown(routingContainer, t("settings.defaultProvider.name"),
       this.plugin.settings.activeProviderId,
@@ -232,7 +232,8 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     addBar.addClass("contextos-provider-add-bar");
     setIcon(addBar, "plus");
     addBar.createSpan({ text: t("settings.addProvider") });
-    addBar.addEventListener("click", async () => {
+    addBar.addEventListener("click", () => {
+      void (async () => {
       const id = `provider-${Date.now()}`;
       const newProvider: ProviderConfig = {
         id,
@@ -250,6 +251,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
       this.providerCollapsed.set(id, false);
       await this.plugin.saveSettings();
       this.display();
+      })();
     });
   }
 
@@ -297,12 +299,12 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     removeButton.addClass("clickable-icon");
     setIcon(removeButton, "trash-2");
     removeButton.setAttr("aria-label", t("settings.removeProvider"));
-    removeButton.addEventListener("click", () => this.removeProvider(provider.id));
+    removeButton.addEventListener("click", () => { void this.removeProvider(provider.id); });
 
     const toggleHeader = () => {
       const newCollapsed = !this.providerCollapsed.get(provider.id);
       this.providerCollapsed.set(provider.id, newCollapsed);
-      body.style.display = newCollapsed ? "none" : "block";
+      body.toggleClass("contextos-collapsed", newCollapsed);
       setIcon(chevron, newCollapsed ? "chevron-right" : "chevron-down");
     };
 
@@ -311,7 +313,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
 
     const body = entry.createDiv();
     body.addClass("contextos-provider-body");
-    if (collapsed) body.style.display = "none";
+    if (collapsed) body.addClass("contextos-collapsed");
 
     this.renderProviderField(body, t("settings.providerType"), { type: "dropdown", dropdownValue: provider.type, dropdownOnChange: async (value: string) => {
       const newType = value as LLMProviderType;
@@ -325,9 +327,9 @@ export class LLMWikiSettingTab extends PluginSettingTab {
 
     this.renderProviderField(body, t("settings.providerApiKey"), { type: "text", value: provider.apiKey, secret: true, onChange: async (value: string) => {
       await this.updateProvider(provider.id, { apiKey: value });
-      if (this.autoTestTimer) clearTimeout(this.autoTestTimer);
+      if (this.autoTestTimer) window.clearTimeout(this.autoTestTimer);
       if (value) {
-        this.autoTestTimer = setTimeout(() => {
+        this.autoTestTimer = window.setTimeout(() => {
           void this.runLLMConnectionTest();
         }, 800);
       }
@@ -592,42 +594,12 @@ export class LLMWikiSettingTab extends PluginSettingTab {
         });
 
       if (s.gitRemoteMethod === "ssh-manual") {
-        new Setting(this.containerEl)
-          .setName(t("settings.gitRemoteUrl.name"))
-          .setDesc(t("settings.gitRemoteUrl.desc"))
-          .addText((text) => {
-            text.setValue(this.plugin.settings.gitRemoteUrl);
-            text.onChange(async (value) => {
-              this.plugin.settings = { ...this.plugin.settings, gitRemoteUrl: value };
-              await this.plugin.saveSettings();
-              if (this.autoTestTimer) clearTimeout(this.autoTestTimer);
-              if (value) {
-                this.autoTestTimer = setTimeout(() => {
-                  void this.plugin.testGitConnection();
-                }, 800);
-              }
-            });
-          });
+        this.addGitRemoteUrlSetting();
       }
 
       if (s.gitRemoteMethod === "ssh-keygen") {
         this.addSshKeygenSettings();
-        new Setting(this.containerEl)
-          .setName(t("settings.gitRemoteUrl.name"))
-          .setDesc(t("settings.gitRemoteUrl.desc"))
-          .addText((text) => {
-            text.setValue(this.plugin.settings.gitRemoteUrl);
-            text.onChange(async (value) => {
-              this.plugin.settings = { ...this.plugin.settings, gitRemoteUrl: value };
-              await this.plugin.saveSettings();
-              if (this.autoTestTimer) clearTimeout(this.autoTestTimer);
-              if (value) {
-                this.autoTestTimer = setTimeout(() => {
-                  void this.plugin.testGitConnection();
-                }, 800);
-              }
-            });
-          });
+        this.addGitRemoteUrlSetting();
       }
 
       if (s.gitRemoteUrl) {
@@ -669,9 +641,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     keyContainer.createEl("p", { text: t("settings.gitSshPublicKey.name") });
     const textarea = keyContainer.createEl("textarea");
     textarea.readOnly = true;
-    textarea.style.width = "100%";
-    textarea.style.height = "100px";
-    textarea.style.resize = "vertical";
+    textarea.addClass("contextos-key-textarea");
     try {
       if (typeof (window as unknown as { require?: (module: string) => unknown }).require !== "undefined") {
         const fs = (window as unknown as { require: (module: string) => { readFileSync: (path: string, encoding: string) => string } }).require("fs");
@@ -686,6 +656,25 @@ export class LLMWikiSettingTab extends PluginSettingTab {
       new Notice(t("notice.gitKeyCopied"));
     });
     keyContainer.createEl("p", { text: t("settings.gitSshPublicKey.desc"), cls: "setting-item-description" });
+  }
+
+  private addGitRemoteUrlSetting(): void {
+    new Setting(this.containerEl)
+      .setName(t("settings.gitRemoteUrl.name"))
+      .setDesc(t("settings.gitRemoteUrl.desc"))
+      .addText((text) => {
+        text.setValue(this.plugin.settings.gitRemoteUrl);
+        text.onChange(async (value) => {
+          this.plugin.settings = { ...this.plugin.settings, gitRemoteUrl: value };
+          await this.plugin.saveSettings();
+          if (this.autoTestTimer) window.clearTimeout(this.autoTestTimer);
+          if (value) {
+            this.autoTestTimer = window.setTimeout(() => {
+              void this.plugin.testGitConnection();
+            }, 800);
+          }
+        });
+      });
   }
 
   private addGitHubApiSettings(): void {
@@ -715,7 +704,8 @@ export class LLMWikiSettingTab extends PluginSettingTab {
         } else {
           const createBtn = statusContainer.createEl("button");
           createBtn.setText(t("settings.gitCreateRepo.name"));
-          createBtn.addEventListener("click", async () => {
+          createBtn.addEventListener("click", () => {
+            void (async () => {
             createBtn.setAttr("disabled", "true");
             try {
               await this.plugin.createGitHubRepo();
@@ -723,6 +713,7 @@ export class LLMWikiSettingTab extends PluginSettingTab {
               createBtn.removeAttribute("disabled");
             }
             this.display();
+            })();
           });
         }
       } catch {

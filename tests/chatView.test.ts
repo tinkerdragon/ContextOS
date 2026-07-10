@@ -211,6 +211,7 @@ test("Copy writes the reply to the clipboard", async () => {
   const writeText = jest.fn(async () => undefined);
   const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
   Object.defineProperty(globalThis, "navigator", { value: { clipboard: { writeText } }, configurable: true });
+  Object.defineProperty(window, "navigator", { value: { clipboard: { writeText } }, configurable: true });
   try {
     const { content } = await openView(baseController({ answerChat: async () => "the reply" }));
     content.fields[0].value = "q";

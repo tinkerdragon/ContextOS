@@ -59,7 +59,7 @@ export function parseOpenAIResponse(text: string): { choices?: Array<{ finish_re
 }
 
 export function defaultSleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 export async function defaultHttpClient(request: HttpRequest): Promise<HttpResponse> {
@@ -91,14 +91,14 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
   abstract get providerType(): string;
 
   protected async withTimeout(promise: Promise<HttpResponse>): Promise<HttpResponse> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: number | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new ProviderError("timeout", "Request timed out")), this.timeoutMs);
+      timer = window.setTimeout(() => reject(new ProviderError("timeout", "Request timed out")), this.timeoutMs);
     });
     try {
       return await Promise.race([promise, timeout]);
     } finally {
-      if (timer) clearTimeout(timer);
+      if (timer) window.clearTimeout(timer);
     }
   }
 
@@ -212,7 +212,7 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
           if (delta) {
             accumulated += delta;
             onToken(delta);
-            await new Promise((resolve) => setTimeout(resolve, 0));
+            await new Promise((resolve) => window.setTimeout(resolve, 0));
           }
         } catch {
           // Skip unparseable chunks

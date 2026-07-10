@@ -1,6 +1,6 @@
 import { requestUrl } from "obsidian";
 import { ChatRequest, CompleteRequest, ConnectionTestRequest, LLMProvider, VisionCompleteRequest } from "./LLMProvider";
-import { BaseProviderOptions, defaultSleep, ProviderError } from "./BaseOpenAICompatibleProvider";
+import { ProviderError } from "./BaseOpenAICompatibleProvider";
 
 const DEFAULT_ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
@@ -82,7 +82,7 @@ export class AnthropicProvider implements LLMProvider {
           if (text) {
             accumulated += text;
             onToken(text);
-            await new Promise((resolve) => setTimeout(resolve, 0));
+            await new Promise((resolve) => window.setTimeout(resolve, 0));
           }
         } catch {
           // Skip unparseable chunks

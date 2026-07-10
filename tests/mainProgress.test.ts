@@ -139,6 +139,7 @@ test("auto ingest applies validated changes without opening the review modal", a
       savedData.push(data);
     });
     plugin.app = {
+      fileManager: { trashFile: jest.fn() },
       vault: {
         on: jest.fn((eventName: string, callback: (file: obsidian.TFile) => void) => {
           listeners.set(eventName, callback);
