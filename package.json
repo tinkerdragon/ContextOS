@@ -1,6 +1,6 @@
 {
   "name": "contextos",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Obsidian plugin for maintaining an LLM Wiki.",
   "main": "main.js",
   "scripts": {
