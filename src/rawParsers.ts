@@ -1,4 +1,8 @@
-import { getJSZip, getMammoth, getXlsx, getWordExtractor, getPptToText } from "./loaders";
+import * as mammoth from "mammoth";
+import WordExtractor from "word-extractor";
+import * as XLSX from "@e965/xlsx";
+import * as JSZip from "jszip";
+import * as PPT from "ppt-to-text";
 import { App, loadPdfJs, TFile } from "obsidian";
 import { t } from "./i18n";
 
@@ -249,7 +253,7 @@ const docxParser: RawParser = {
   },
   async read(app: App, file: TFile): Promise<string> {
     const arrayBuffer = await app.vault.readBinary(file);
-    const result = await getMammoth().extractRawText({ arrayBuffer });
+    const result = await mammoth.extractRawText({ arrayBuffer });
     return requireOfficeText(result.value, file.path);
   }
 };
@@ -264,7 +268,7 @@ const docParser: RawParser = {
   },
   async read(app: App, file: TFile): Promise<string> {
     const arrayBuffer = await app.vault.readBinary(file);
-    const extractor = new (getWordExtractor())();
+    const extractor = new WordExtractor();
     const document = await extractor.extract(Buffer.from(new Uint8Array(arrayBuffer)));
     return requireOfficeText(document.getBody(), file.path);
   }
@@ -289,11 +293,11 @@ const xlsxParser: RawParser = {
   },
   async read(app: App, file: TFile): Promise<string> {
     const buffer = await app.vault.readBinary(file);
-    const workbook = getXlsx().read(new Uint8Array(buffer), { type: "array" });
+    const workbook = XLSX.read(new Uint8Array(buffer), { type: "array" });
     let hasCellText = false;
     const text = workbook.SheetNames.map((sheetName) => {
       const sheet = workbook.Sheets[sheetName];
-      const rows = getXlsx().utils.sheet_to_json(sheet, { header: 1, blankrows: false }) as unknown[][];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false }) as unknown[][];
       hasCellText = hasCellText || hasXlsxCellText(rows);
       return [`# Sheet: ${sheetName}`, ...rows.map((row) => row.map(formatXlsxCell).join("\t"))].join("\n");
     }).join("\n\n");
@@ -435,7 +439,7 @@ const pptParser: RawParser = {
   },
   async read(app: App, file: TFile): Promise<string> {
     const arrayBuffer = await app.vault.readBinary(file);
-    const text = getPptToText().extractText(Buffer.from(new Uint8Array(arrayBuffer)), { separator: "\n\n" });
+    const text = PPT.extractText(Buffer.from(new Uint8Array(arrayBuffer)), { separator: "\n\n" });
     const slides = text
       .split(/\n{2,}/)
       .map((slide) => slide.trim())
@@ -674,7 +678,7 @@ const pptxParser: RawParser = {
   },
   async read(app: App, file: TFile, context: RawParserContext): Promise<string> {
     const buffer = await app.vault.readBinary(file);
-    const archive = await getJSZip().loadAsync(buffer);
+    const archive = await JSZip.loadAsync(buffer);
     const slides = await getPptxSlides(archive.files);
 
     const slideText = await Promise.all(slides.map(async ({ path }, index) => {

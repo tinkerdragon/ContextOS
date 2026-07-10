@@ -1,4 +1,4 @@
-import { getJSZip } from "./loaders";
+import * as JSZip from "jszip";
 import { App, TFile } from "obsidian";
 import { LLMWikiSettings, RawFileState, RawFileStateEntry } from "./types";
 import { normalizePath } from "./changePlan";
@@ -18,7 +18,6 @@ export type { ImageOcrProvider, ImageOcrRequest, PdfOcrProvider, PdfOcrRequest }
 
 export async function renderPdfPageToPngDataUrl(page: PdfPage, scale = 2): Promise<string> {
   const viewport = page.getViewport({ scale });
-  // eslint-disable-next-line obsidianmd/prefer-create-el
   const canvas = activeDocument.createElement("canvas");
   canvas.width = viewport.width;
   canvas.height = viewport.height;
@@ -105,7 +104,7 @@ function isIgnoredOpenXmlEntry(path: string): boolean {
 }
 
 export async function hashOpenXmlContent(buffer: ArrayBuffer): Promise<string> {
-  const archive = await getJSZip().loadAsync(buffer);
+  const archive = await JSZip.loadAsync(buffer);
   const parts: string[] = [];
   for (const path of Object.keys(archive.files).sort()) {
     const file = archive.files[path];
