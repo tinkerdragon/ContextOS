@@ -1,0 +1,877 @@
+.modal.contextos-review-modal-shell {
+  width: min(1120px, 96vw);
+  max-width: 1120px;
+}
+
+.modal.contextos-review-modal-shell .modal-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.contextos-review-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-height: min(820px, 88vh);
+}
+
+.contextos-review-hero {
+  padding: 28px 32px 22px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background:
+    radial-gradient(circle at top left, rgba(var(--interactive-accent-rgb), 0.18), transparent 34%),
+    linear-gradient(135deg, var(--background-secondary), var(--background-primary));
+}
+
+.contextos-review-hero h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.65rem;
+  letter-spacing: -0.035em;
+}
+
+.contextos-review-hero p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.contextos-review-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.contextos-stat-chip,
+.contextos-path-pill,
+.contextos-operation-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.contextos-stat-chip {
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+}
+
+.contextos-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 220px;
+  max-height: min(58vh, 620px);
+  overflow: auto;
+  padding: 20px 32px;
+  background: var(--background-secondary-alt);
+}
+
+.contextos-operation-card {
+  padding: 18px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 16px;
+  background: var(--background-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.contextos-operation-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.contextos-operation-badge {
+  padding: 5px 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+
+.contextos-operation-create {
+  background: var(--color-green);
+}
+
+.contextos-operation-update {
+  background: var(--color-blue);
+}
+
+.contextos-operation-append {
+  background: var(--color-purple);
+}
+
+.contextos-operation-prepend {
+  background: var(--color-cyan);
+}
+
+.contextos-operation-delete {
+  background: var(--color-red);
+}
+
+.contextos-path-pill {
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contextos-operation-card p {
+  margin: 0 0 10px 0;
+  color: var(--text-muted);
+}
+
+.contextos-code-preview {
+  max-height: 380px;
+  overflow: auto;
+  margin: 0;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--code-background);
+  color: var(--code-normal);
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.contextos-empty-state {
+  padding: 32px 18px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 14px;
+  background: var(--background-secondary);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.contextos-action-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 32px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: color-mix(in srgb, var(--background-primary) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.contextos-action-bar button {
+  min-width: 112px;
+}
+
+/* Chat view */
+.contextos-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--background-primary);
+}
+
+.contextos-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+.contextos-chat-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.contextos-chat-title {
+  font-weight: 700;
+  font-size: 0.98rem;
+  letter-spacing: -0.01em;
+  color: var(--text-normal);
+}
+
+.contextos-chat-subtitle {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Icon buttons shared by the header and composer */
+.contextos-chat-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.contextos-chat-iconbtn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.contextos-chat-newchat:hover {
+  color: var(--interactive-accent);
+}
+
+/* Messages area */
+.contextos-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 16px;
+  scroll-behavior: smooth;
+}
+
+/* Empty state */
+.contextos-chat-empty {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  padding: 24px 12px;
+  text-align: center;
+}
+
+.contextos-chat-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 6px;
+  border-radius: 16px;
+  color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+
+.contextos-chat-empty-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.contextos-chat-empty-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-normal);
+}
+
+.contextos-chat-empty-subtitle {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.contextos-chat-suggestions-label {
+  margin-top: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.contextos-chat-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.contextos-chat-suggestion {
+  padding: 10px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: 0.86rem;
+  text-align: left;
+  box-shadow: none;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+
+.contextos-chat-suggestion:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+  transform: translateY(-1px);
+}
+
+/* Message rows */
+.contextos-chat-message {
+  display: flex;
+  gap: 10px;
+  max-width: 100%;
+}
+
+.contextos-chat-message-user {
+  justify-content: flex-end;
+}
+
+.contextos-chat-message-assistant {
+  justify-content: flex-start;
+}
+
+.contextos-chat-avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  border-radius: 8px;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+
+.contextos-chat-avatar svg {
+  width: 16px;
+  height: 16px;
+}
+
+.contextos-chat-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contextos-chat-message-user .contextos-chat-main {
+  align-items: flex-end;
+  max-width: 86%;
+}
+
+.contextos-chat-message-assistant .contextos-chat-main {
+  max-width: calc(100% - 38px);
+}
+
+.contextos-chat-name {
+  padding-left: 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.contextos-chat-body {
+  padding: 10px 14px;
+  border-radius: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.contextos-chat-message-user .contextos-chat-body {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-bottom-right-radius: 4px;
+  white-space: pre-wrap;
+}
+
+.contextos-chat-message-assistant .contextos-chat-body {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-bottom-left-radius: 4px;
+}
+
+/* Tighten Markdown spacing inside assistant bubbles */
+.contextos-chat-body > :first-child {
+  margin-top: 0;
+}
+
+.contextos-chat-body > :last-child {
+  margin-bottom: 0;
+}
+
+.contextos-chat-body p {
+  margin: 0 0 8px 0;
+}
+
+.contextos-chat-body pre {
+  margin: 8px 0;
+  padding: 12px;
+  border-radius: 10px;
+  overflow: auto;
+}
+
+.contextos-chat-body ul,
+.contextos-chat-body ol {
+  margin: 6px 0;
+  padding-left: 1.3em;
+}
+
+/* Message actions (copy / save) — revealed on hover or focus */
+.contextos-chat-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+  padding-left: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.contextos-chat-message-assistant:hover .contextos-chat-actions,
+.contextos-chat-message-assistant:focus-within .contextos-chat-actions {
+  opacity: 1;
+}
+
+.contextos-chat-actionbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.contextos-chat-actionbtn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.contextos-chat-actionbtn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.contextos-chat-actionbtn.is-copied {
+  color: var(--interactive-accent);
+}
+
+/* Thinking indicator */
+.contextos-chat-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 12px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  background: var(--background-secondary);
+}
+
+.contextos-chat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: contextos-chat-bounce 1.2s infinite ease-in-out;
+}
+
+.contextos-chat-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.contextos-chat-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes contextos-chat-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* Error bubble */
+.contextos-chat-error {
+  align-self: flex-start;
+  max-width: 92%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: var(--text-error);
+  background: color-mix(in srgb, var(--background-modifier-error) 40%, var(--background-secondary));
+  border: 1px solid var(--background-modifier-error);
+}
+
+/* Composer */
+.contextos-chat-composer {
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+.contextos-chat-inputwrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 16px;
+  background: var(--background-secondary);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.contextos-chat-inputwrap:focus-within {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+}
+
+.contextos-chat-input {
+  flex: 1;
+  min-height: 24px;
+  max-height: 200px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: none;
+}
+
+.contextos-chat-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.contextos-chat-send {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.contextos-chat-send:hover {
+  background: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}
+
+.contextos-chat-send.is-disabled,
+.contextos-chat-send.is-disabled:hover {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  opacity: 0.7;
+  cursor: default;
+}
+
+.contextos-chat-hint {
+  margin-top: 8px;
+  font-size: 0.7rem;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+/* Conversation history panel (toggled from the header) */
+.contextos-chat-history {
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+}
+
+.contextos-chat-history-empty {
+  margin: auto;
+  padding: 24px 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.contextos-chat-history-item-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 10px;
+}
+
+.contextos-chat-history-item-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.contextos-chat-history-item-row.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+
+.contextos-chat-history-item {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: 0.86rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.contextos-chat-history-item-row.is-active .contextos-chat-history-item {
+  font-weight: 600;
+  color: var(--interactive-accent);
+}
+
+.contextos-chat-history-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.contextos-chat-history-item-row:hover .contextos-chat-history-action {
+  opacity: 1;
+}
+
+.contextos-chat-history-rename:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.contextos-chat-history-delete:hover {
+  color: var(--text-error);
+  background: var(--background-modifier-hover);
+}
+
+.contextos-chat-history-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Provider entry with collapsible dropdown */
+.contextos-provider-entry {
+  margin-bottom: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+  overflow: hidden;
+}
+
+.contextos-provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: default;
+  background: var(--background-secondary);
+  min-height: 42px;
+}
+
+.contextos-provider-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.contextos-provider-chevron {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: background 120ms ease;
+}
+
+.contextos-provider-chevron:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.contextos-provider-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+
+.contextos-provider-name-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-weight: 500;
+  outline: none;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.contextos-provider-name-input:hover {
+  background: var(--background-modifier-hover);
+}
+
+.contextos-provider-name-input:focus {
+  border-color: var(--interactive-accent);
+  background: var(--background-primary);
+}
+
+.contextos-provider-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.contextos-provider-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.contextos-provider-toggle input[type="checkbox"] {
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  position: relative;
+  transition: background 150ms ease;
+  flex-shrink: 0;
+}
+
+.contextos-provider-toggle input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--background-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 150ms ease;
+}
+
+.contextos-provider-toggle input[type="checkbox"]:checked {
+  background: var(--interactive-accent);
+}
+
+.contextos-provider-toggle input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+}
+
+.contextos-provider-remove {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.contextos-provider-remove:hover {
+  background: var(--background-modifier-error-hover);
+  color: var(--text-error);
+}
+
+.contextos-provider-remove:hover svg {
+  opacity: 1;
+}
+
+.contextos-provider-remove svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+}
+
+.contextos-provider-body {
+  padding: 8px 12px 12px;
+}
+
+/* Add provider bar: full-width button spanning the width */
+.contextos-provider-add-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 42px;
+  margin-bottom: 12px;
+  border: 2px dashed var(--background-modifier-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.contextos-provider-add-bar:hover {
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
+}
+
+.contextos-provider-add-bar svg {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+.contextos-routing-bar {
+  padding: 8px 12px 4px;
+  margin-bottom: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+}
+
+.contextos-routing-bar h4 {
+  margin: 4px 0 8px;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-muted);
+}
