@@ -1,7 +1,7 @@
 {
   "id": "contextos",
   "name": "ContextOS",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "minAppVersion": "1.8.7",
   "description": "AI-assisted ingest, chat, lint, and git-backed wiki that compounds knowledge from 15+ raw formats — Markdown, PDF, Office docs, images, and more.",
   "author": "stanleychen",

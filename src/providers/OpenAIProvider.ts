@@ -1,4 +1,4 @@
-import { ChatRequest, CompleteRequest, ConnectionTestRequest, VisionCompleteRequest } from "./LLMProvider";
+import { ChatRequest, CompleteRequest, VisionCompleteRequest } from "./LLMProvider";
 import { BaseOpenAICompatibleProvider, DEFAULT_OPENAI_API_URL, ProviderError, BaseProviderOptions, HttpClient, defaultHttpClient } from "./BaseOpenAICompatibleProvider";
 
 export class OpenAIProviderError extends ProviderError {
@@ -31,7 +31,7 @@ export class OpenAIProvider extends BaseOpenAICompatibleProvider {
         [
           { role: "system", content: "You are a careful ContextOS maintainer. Return strict JSON only." },
           { role: "user", content: request.prompt }
-        ], true
+        ], true, request.maxTokens
       );
     } catch (error) { throw toOpenAIError(error); }
   }
@@ -49,7 +49,7 @@ export class OpenAIProvider extends BaseOpenAICompatibleProvider {
               { type: "image_url", image_url: { url: request.imageDataUrl } }
             ]
           }
-        ], false
+        ], false, request.maxTokens
       );
     } catch (error) { throw toOpenAIError(error); }
   }
@@ -58,31 +58,8 @@ export class OpenAIProvider extends BaseOpenAICompatibleProvider {
     try {
       return await this.completeMessages(
         request.apiKey, request.apiUrl || this.defaultApiUrl, request.model,
-        request.messages, false, request.onToken
+        request.messages, false, request.maxTokens, request.onToken
       );
-    } catch (error) { throw toOpenAIError(error); }
-  }
-
-  async testConnection(request: ConnectionTestRequest): Promise<void> {
-    try {
-      const response = await this.withTimeout(this.httpClient({
-        url: request.apiUrl || this.defaultApiUrl,
-        options: {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${request.apiKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: request.model,
-            messages: [{ role: "user", content: "ping" }],
-            max_tokens: 1
-          })
-        }
-      }));
-      if (response.status < 200 || response.status >= 300) {
-        throw new OpenAIProviderError("connection", `${response.status} ${response.text}`);
-      }
     } catch (error) { throw toOpenAIError(error); }
   }
 }

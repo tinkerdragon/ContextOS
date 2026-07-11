@@ -206,6 +206,16 @@ Lint ContextOS
 
 The plugin asks the model to reconcile the wiki with the current raw sources and to look for stale claims, contradictions, missing cross-references, important concepts without pages, and data gaps. Because the wiki is a synthesis distilled from many sources, a page whose raw source was removed is usually revised — its now-unsupported claims dropped — rather than deleted; a page is deleted only when nothing of value would remain. Deletions are proposed in the change plan and applied only after you review them (following Karpathy's model: sources are immutable, and the wiki is reconciled during lint rather than automatically when a source is deleted).
 
+### Undo last change set
+
+Run:
+
+```text
+Undo last ContextOS change
+```
+
+Reverses the most recently applied change plan — deletes files that were created, restores files that were modified, and recreates files that were deleted. A confirmation notice shows the plan summary and operation counts before reverting. History is kept for the last 20 change sets.
+
 ## Safety model
 
 - Raw files are never modified by generated change plans.
@@ -218,7 +228,7 @@ The plugin asks the model to reconcile the wiki with the current raw sources and
 
 ## Privacy and network use
 
-This plugin sends selected vault content to the OpenAI-compatible chat completions endpoint configured in the plugin settings. During ingest, it sends new or changed raw text extracted from supported source files, including Markdown, text/code, HTML, PDFs, Office documents, spreadsheets, presentations, and RTF files; when OCR is needed, it sends rendered PDF page images, embedded PPTX slide images, or supported image files to the configured model. Wiki index/log context is included. When you chat, it sends the wiki index plus the pages selected for each turn along with the recent conversation messages; saving a chat answer and the lint command also send relevant wiki context. The **Test OpenAI connection** button sends a small ping-style chat completions request to the configured endpoint. No network request is made until you configure an API URL and API key and run a command or click the test button.
+This plugin sends selected vault content to the OpenAI-compatible chat completions endpoint configured in the plugin settings. During ingest, it sends new or changed raw text extracted from supported source files, including Markdown, text/code, HTML, PDFs, Office documents, spreadsheets, presentations, and RTF files; when OCR is needed, it sends rendered PDF page images, embedded PPTX slide images, or supported image files to the configured model. Wiki index/log context is included. When you chat, it sends the wiki index plus the pages selected for each turn along with the recent conversation messages; saving a chat answer and the lint command also send relevant wiki context. The **Test connection** button sends a real completion request ("ping") and verifies the provider returns non-empty content, reporting status, finish reason, and a content preview. No network request is made until you configure an API URL and API key and run a command or click the test button.
 
 The API key is stored locally in Obsidian plugin data and is sent as an Authorization header only to the configured API URL. If you configure a third-party OpenAI-compatible endpoint, your API key and selected vault content are sent to that provider.
 

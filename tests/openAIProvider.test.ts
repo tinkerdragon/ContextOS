@@ -76,10 +76,10 @@ test("tests configured endpoint with HTTP-only validation", async () => {
   const calls: Array<{ url: string; options: { body: string; headers: Record<string, string>; method: string } }> = [];
   const provider = new OpenAIProvider(async (request) => {
     calls.push(request);
-    return { status: 204, text: "" };
+    return { status: 200, text: JSON.stringify({ choices: [{ message: { content: "ok" } }] }) };
   });
 
-  await provider.testConnection({
+  const result = await provider.testConnection({
     apiKey: "key",
     apiUrl: "https://example.test/v1/chat/completions",
     model: "test-model"
@@ -89,18 +89,20 @@ test("tests configured endpoint with HTTP-only validation", async () => {
   expect(calls[0].url).toBe("https://example.test/v1/chat/completions");
   expect(calls[0].options.headers.Authorization).toBe("Bearer key");
   expect(body.model).toBe("test-model");
-  expect(body.max_tokens).toBe(1);
+  expect(body.max_tokens).toBeUndefined();
+  expect(result.ok).toBe(true);
+  expect(result.hasContent).toBe(true);
 });
 
-test("connection test exposes raw provider error for non-2xx response", async () => {
+test("connection test returns error result for non-2xx response", async () => {
   const provider = new OpenAIProvider(async () => ({ status: 500, text: "server error" }));
 
-  await expect(provider.testConnection({ apiKey: "key", model: "test-model" }))
-    .rejects.toMatchObject({
-      name: "OpenAIProviderError",
-      kind: "connection",
-      message: "500 server error"
-    });
+  const result = await provider.testConnection({ apiKey: "key", model: "test-model" });
+
+  expect(result.ok).toBe(false);
+  expect(result.status).toBe(500);
+  expect(result.error).toBe("500 server error");
+  expect(result.errorKind).toBe("connection");
 });
 
 test("completion exposes raw provider error for non-2xx response", async () => {
@@ -141,7 +143,7 @@ test("throws structured provider error when successful response is missing messa
   })).rejects.toMatchObject({
     name: "OpenAIProviderError",
     kind: "missing-content",
-    message: "Response did not include message content"
+    message: "No message content returned (finish_reason: missing). Check max_tokens and model compatibility."
   });
 });
 
@@ -296,8 +298,11 @@ test("times out a hung testConnection", async () => {
     { maxAttempts: 1, timeoutMs: 10 }
   );
 
-  await expect(provider.testConnection({ apiKey: "k", model: "m" }))
-    .rejects.toMatchObject({ name: "OpenAIProviderError", kind: "timeout" });
+  const result = await provider.testConnection({ apiKey: "k", model: "m" });
+
+  expect(result.ok).toBe(false);
+  expect(result.error).toBe("Request timed out");
+  expect(result.errorKind).toBe("connection");
 }, 1000);
 
 test("times out a hung request", async () => {

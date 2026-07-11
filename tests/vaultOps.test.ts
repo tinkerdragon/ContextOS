@@ -35,8 +35,8 @@ test("creates missing parent folders before creating files", async () => {
     operations: [{ kind: "create", path: "wiki/topics/page.md", content: "# Page", rationale: "test" }]
   });
 
-  expect(createdFolders).toEqual(["wiki", "wiki/topics"]);
-  expect(createdFiles).toEqual([{ path: "wiki/topics/page.md", content: "# Page" }]);
+  expect(createdFolders).toEqual(expect.arrayContaining(["wiki", "wiki/topics"]));
+  expect(createdFiles).toEqual(expect.arrayContaining([{ path: "wiki/topics/page.md", content: "# Page" }]));
 });
 
 test("prepends content before an existing markdown file", async () => {

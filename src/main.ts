@@ -12,13 +12,15 @@ import { findChangedRawFiles, findRawFileCandidates, hashContent, ImageOcrReques
 import { DEFAULT_SETTINGS, getProviderConfigForOperation, LLMWikiSettingTab } from "./settings";
 import type { OperationType } from "./settings";
 import { LLMWikiPluginData, LLMWikiSettings, ProviderConfig } from "./types";
-import { applyChangePlan, listMarkdownFilePaths, listMarkdownFiles, readTextFile, readWikiPages } from "./vaultOps";
+import { applyChangePlan, getLatestHistoryEntry, listMarkdownFilePaths, listMarkdownFiles, readTextFile, readWikiPages, revertChangePlan } from "./vaultOps";
 import { extractJsonArray } from "./jsonExtract";
 import { EmbeddingsProvider } from "./embeddings/EmbeddingsProvider";
 import { OllamaEmbeddingsProvider, cosineSearch } from "./embeddings/OllamaEmbeddingsProvider";
 import { OpenAIEmbeddingsProvider } from "./embeddings/OpenAIEmbeddingsProvider";
 import { QdrantEmbeddingsProvider } from "./embeddings/QdrantEmbeddingsProvider";
 import { EmbeddingsStore } from "./embeddings/EmbeddingsStore";
+import { resolveLinksInPlan, ResolvedLinks } from "./linkResolver";
+import { runDeterministicLint } from "./deterministicLint";
 
 const QUERY_MAX_PAGES = 12;
 // Cap the conversation turns sent to the model so history + per-turn wiki context stays within
@@ -74,6 +76,12 @@ export default class LLMWikiPlugin extends Plugin implements ChatController {
       id: "push-wiki-changes",
       name: t("command.pushWiki"),
       callback: () => this.pushWikiCommand()
+    });
+
+    this.addCommand({
+      id: "undo-last-change",
+      name: t("command.undoLastChange"),
+      callback: () => this.undoLastChange()
     });
   }
 
@@ -258,6 +266,8 @@ export default class LLMWikiPlugin extends Plugin implements ChatController {
       const sourceTexts = changedRawFiles.map((file) =>
         `---
 Source path: ${file.path}
+Source hash: ${file.hash}
+Ingest date: ${new Date().toISOString().split("T")[0]}
 ${file.content}`).join("\n");
       const prompt = templateEngine.buildIngestPrompt(this.settings, {
         index: await readTextFile(this.app, this.settings.indexPath),
@@ -299,7 +309,8 @@ ${file.content}`).join("\n");
         apiUrl: providerConfig.apiUrl,
         model: providerConfig.model,
         prompt: templateEngine.getOcrPdfPrompt(this.settings, request.pageNumber, request.path),
-        imageDataUrl
+        imageDataUrl,
+        maxTokens: providerConfig.maxTokens
       });
     } catch (error) {
       throw new Error(formatOpenAIErrorMessage(error, t("error.requestFailed")));
@@ -321,7 +332,8 @@ ${file.content}`).join("\n");
         apiUrl: providerConfig.apiUrl,
         model: providerConfig.model,
         prompt: templateEngine.getOcrImagePrompt(this.settings, request.path),
-        imageDataUrl: request.imageDataUrl
+        imageDataUrl: request.imageDataUrl,
+        maxTokens: providerConfig.maxTokens
       });
     } catch (error) {
       throw new Error(formatOpenAIErrorMessage(error, t("error.requestFailed")));
@@ -390,7 +402,8 @@ ${p.content}`).join("\n\n");
           { role: "system", content: systemContent },
           ...messages.slice(-CHAT_HISTORY_MAX_MESSAGES)
         ],
-        onToken
+        onToken,
+        maxTokens: providerConfig?.maxTokens
       });
     } catch (error) {
       throw new Error(formatOpenAIErrorMessage(error, t("error.requestFailed")));
@@ -486,7 +499,8 @@ ${p.content}`).join("\n\n");
       apiKey: providerConfig?.apiKey ?? "",
       apiUrl: providerConfig?.apiUrl ?? "",
       model: providerConfig?.model ?? "",
-      prompt: templateEngine.buildQuerySelectionPrompt(this.settings, { index, question, pagePaths: pagePaths.join("\n") })
+      prompt: templateEngine.buildQuerySelectionPrompt(this.settings, { index, question, pagePaths: pagePaths.join("\n") }),
+      maxTokens: providerConfig?.maxTokens
     });
     return parseSelectedQueryPages(response, pagePaths, QUERY_MAX_PAGES);
   }
@@ -495,6 +509,39 @@ ${p.content}`).join("\n\n");
     const readingMessage = t("status.readingVaultContext");
     this.setStatus(readingMessage);
     new Notice(readingMessage);
+
+    try {
+      const report = await runDeterministicLint(this.app, this.settings);
+      const totalIssues = report.brokenLinks.length + report.missingFrontmatter.length
+        + report.orphans.length + report.deadIndexLinks.length
+        + report.duplicates.length + report.stalePages.length;
+
+      if (totalIssues === 0) {
+        new Notice(t("notice.deterministicLintClean"));
+      } else {
+        const parts: string[] = [];
+        if (report.brokenLinks.length > 0) parts.push(t("notice.lintBrokenLinks", { count: report.brokenLinks.length }));
+        if (report.missingFrontmatter.length > 0) parts.push(t("notice.lintMissingFrontmatter", { count: report.missingFrontmatter.length }));
+        if (report.orphans.length > 0) parts.push(t("notice.lintOrphans", { count: report.orphans.length }));
+        if (report.deadIndexLinks.length > 0) parts.push(t("notice.lintDeadIndexLinks", { count: report.deadIndexLinks.length }));
+        if (report.duplicates.length > 0) parts.push(t("notice.lintDuplicates", { count: report.duplicates.length }));
+        if (report.stalePages.length > 0) parts.push(t("notice.lintStalePages", { count: report.stalePages.length }));
+        new Notice(parts.join("; "));
+
+        for (const link of report.brokenLinks) {
+          console.warn(`[ContextOS] Broken link [[${link.linkTarget}]] in ${link.pagePath}`);
+        }
+        for (const dupe of report.duplicates) {
+          console.warn(`[ContextOS] Duplicate filename (case-insensitive): ${dupe}`);
+        }
+        for (const target of report.deadIndexLinks) {
+          console.warn(`[ContextOS] Dead index link: [[${target}]]`);
+        }
+      }
+    } catch {
+      new Notice(t("notice.deterministicLintError"));
+    }
+
     const wikiPages = await listMarkdownFiles(this.app, this.settings.wikiFolder);
     const rawPaths = findRawFileCandidates(this.app.vault.getFiles(), this.settings)
       .sourceFiles.map((file) => file.path).sort();
@@ -525,31 +572,40 @@ ${p.content}`).join("\n\n");
         apiKey: providerConfig.apiKey,
         apiUrl: providerConfig.apiUrl,
         model: providerConfig.model,
-        prompt
+        prompt,
+        maxTokens: providerConfig.maxTokens
       });
       const validatingMessage = t("status.validatingChanges");
       this.setStatus(validatingMessage);
       new Notice(validatingMessage);
       const plan = validateChangePlan(parseChangePlan(response), this.settings);
-      if (autoApply && !planHasDestructiveOperation(plan)) {
+      let resolvedPlan = plan;
+      let links: ResolvedLinks = { resolved: [], unresolved: [] };
+      try {
+        const wikiPaths = listMarkdownFilePaths(this.app, this.settings.wikiFolder);
+        ({ plan: resolvedPlan, links } = resolveLinksInPlan(plan, wikiPaths));
+      } catch {
+        // Link resolution is best-effort; proceed with original plan on error
+      }
+      if (autoApply && !planHasDestructiveOperation(resolvedPlan)) {
         const applyingMessage = t("status.applyingChanges");
         this.setStatus(applyingMessage);
         new Notice(applyingMessage);
-        await applyChangePlan(this.app, plan);
+        await applyChangePlan(this.app, resolvedPlan);
         await onApplySuccess?.();
-        await this.updateEmbeddings(plan);
-        await this.tryGitCommit(plan);
+        await this.updateEmbeddings(resolvedPlan);
+        await this.tryGitCommit(resolvedPlan);
         this.setStatus(t("status.applied"));
         new Notice(t("notice.changesApplied"));
         return;
       }
       this.setStatus(t("status.reviewChanges"));
       new Notice(t("notice.reviewChanges"));
-      new ChangePlanPreviewModal(this.app, plan, (message) => this.setStatus(message), async () => {
+      new ChangePlanPreviewModal(this.app, resolvedPlan, (message) => this.setStatus(message), async () => {
         await onApplySuccess?.();
-        await this.updateEmbeddings(plan);
-        await this.tryGitCommit(plan);
-      }).open();
+        await this.updateEmbeddings(resolvedPlan);
+        await this.tryGitCommit(resolvedPlan);
+      }, links).open();
     } catch (error) {
       const message = formatOpenAIErrorMessage(error, t("error.requestFailed"));
       this.setStatus(t("status.error", { message }));
@@ -557,29 +613,41 @@ ${p.content}`).join("\n\n");
     }
   }
 
-  private async execGit(args: string, env?: Record<string, string>): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+  private async execGit(args: string[], env?: Record<string, string>): Promise<{ ok: boolean; stdout: string; stderr: string }> {
     if (typeof (window as unknown as { require?: (module: string) => unknown }).require === "undefined") {
       return { ok: false, stdout: "", stderr: "Electron require not available" };
     }
-    const childProcess = (window as unknown as { require: (module: string) => { exec: (cmd: string, options: unknown, callback: (err: unknown, stdout: string, stderr: string) => void) => unknown } }).require("child_process");
+    const childProcess = (window as unknown as { require: (module: string) => { spawn: (cmd: string, args: string[], options: { cwd: string; env: Record<string, string | undefined> }) => { stdout: { on: (ev: string, cb: (d: Buffer) => void) => void }; stderr: { on: (ev: string, cb: (d: Buffer) => void) => void }; on: (ev: string, cb: (arg: unknown) => void) => void } } }).require("child_process");
     const vaultPath = (this.app.vault.adapter as { getBasePath?: () => string }).getBasePath?.() ?? "";
     if (!vaultPath) return { ok: false, stdout: "", stderr: "Vault path not available" };
     return new Promise((resolve) => {
-      childProcess.exec(args, { cwd: vaultPath, env: { ...process.env, ...env } }, (err, stdout, stderr) => {
-        resolve({ ok: !err, stdout: (stdout || "").trim(), stderr: (stderr || "").trim() });
-      });
+      try {
+        const proc = childProcess.spawn("git", args, { cwd: vaultPath, env: { ...process.env, ...env } });
+        let stdout = "";
+        let stderr = "";
+        proc.stdout.on("data", (data) => { stdout += data.toString(); });
+        proc.stderr.on("data", (data) => { stderr += data.toString(); });
+        proc.on("close", (code) => {
+          resolve({ ok: code === 0, stdout: stdout.trim(), stderr: stderr.trim() });
+        });
+        proc.on("error", (err) => {
+          resolve({ ok: false, stdout: stdout.trim(), stderr: (err as Error).message });
+        });
+      } catch (err) {
+        resolve({ ok: false, stdout: "", stderr: (err as Error).message });
+      }
     });
   }
 
   private async ensureGitRepo(): Promise<boolean> {
-    const check = await this.execGit("git --version");
+    const check = await this.execGit(["--version"]);
     if (!check.ok) {
       new Notice(t("notice.gitNotInstalled"));
       return false;
     }
-    const repoCheck = await this.execGit("git rev-parse --git-dir");
+    const repoCheck = await this.execGit(["rev-parse", "--git-dir"]);
     if (repoCheck.ok) return true;
-    const init = await this.execGit("git init");
+    const init = await this.execGit(["init"]);
     if (!init.ok) {
       new Notice(t("notice.gitInitFailed"));
       return false;
@@ -590,17 +658,17 @@ ${p.content}`).join("\n\n");
   private async ensureRemote(): Promise<boolean> {
     if (!this.settings.gitRemoteUrl) return true;
     const env = this.gitEnv();
-    const check = await this.execGit("git remote get-url origin", env);
+    const check = await this.execGit(["remote", "get-url", "origin"], env);
     if (check.ok) {
       if (check.stdout === this.settings.gitRemoteUrl) return true;
-      const setUrl = await this.execGit(`git remote set-url origin ${this.settings.gitRemoteUrl}`, env);
+      const setUrl = await this.execGit(["remote", "set-url", "origin", this.settings.gitRemoteUrl], env);
       if (!setUrl.ok) {
         new Notice(`Failed to update remote: ${setUrl.stderr}`);
         return false;
       }
       return true;
     }
-    const add = await this.execGit(`git remote add origin ${this.settings.gitRemoteUrl}`, env);
+    const add = await this.execGit(["remote", "add", "origin", this.settings.gitRemoteUrl], env);
     if (!add.ok) {
       new Notice(`Failed to add remote: ${add.stderr}`);
       return false;
@@ -610,7 +678,7 @@ ${p.content}`).join("\n\n");
 
   private async gitPush(): Promise<boolean> {
     const env = this.gitEnv();
-    const result = await this.execGit("git push origin HEAD", env);
+    const result = await this.execGit(["push", "origin", "HEAD"], env);
     if (result.ok) {
       new Notice(t("notice.gitPushSuccess"));
       return true;
@@ -632,7 +700,12 @@ ${p.content}`).join("\n\n");
       });
       const wikiFolder = this.settings.wikiFolder;
       const env = this.gitEnv();
-      const result = await this.execGit(`git add "${wikiFolder}" && git commit -m "${message.replace(/"/g, '\\"')}"`, env);
+      const addResult = await this.execGit(["add", wikiFolder], env);
+      if (!addResult.ok) {
+        new Notice(`Git add failed: ${addResult.stderr}`);
+        return;
+      }
+      const result = await this.execGit(["commit", "-m", message], env);
       if (result.ok) {
         new Notice(t("notice.gitCommitted"));
       } else if (result.stderr.includes("nothing to commit")) {
@@ -658,6 +731,31 @@ ${p.content}`).join("\n\n");
     await this.gitPush();
   }
 
+  private async undoLastChange(): Promise<void> {
+    try {
+      const entry = await getLatestHistoryEntry(this.app);
+      if (!entry) {
+        new Notice(t("notice.noHistoryEntry"));
+        return;
+      }
+      const opCounts = countOperationKinds(entry.plan);
+      const confirmMessage = t("notice.undoConfirm", {
+        summary: entry.plan.summary,
+        details: opCounts
+      });
+      new Notice(confirmMessage);
+      await revertChangePlan(this.app, entry);
+      if (this.settings.gitMode !== "none") {
+        await this.tryGitCommit(entry.plan);
+      }
+      this.setStatus(t("status.idle"));
+      new Notice(t("notice.undoApplied"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("error.unknown");
+      new Notice(t("notice.undoFailed", { message }));
+    }
+  }
+
   private gitEnv(): Record<string, string> | undefined {
     if (this.settings.gitMode !== "remote") return undefined;
     if (this.settings.gitRemoteMethod !== "ssh-keygen") return undefined;
@@ -674,7 +772,7 @@ ${p.content}`).join("\n\n");
       const os = (window as unknown as { require: (module: string) => { homedir: () => string } }).require("os");
       const path = (window as unknown as { require: (module: string) => { join: (...segments: string[]) => string } }).require("path");
       const fs = (window as unknown as { require: (module: string) => { existsSync: (p: string) => boolean; readFileSync: (p: string, enc: string) => string } }).require("fs");
-      const childProcess = (window as unknown as { require: (module: string) => { exec: (cmd: string, cb: (err: unknown, stdout: string, stderr: string) => void) => unknown } }).require("child_process");
+      const childProcess = (window as unknown as { require: (module: string) => { spawn: (cmd: string, args: string[], options: Record<string, unknown>) => { on: (ev: string, cb: (code: number | null) => void) => void; stderr: { on: (ev: string, cb: (d: Buffer) => void) => void } } } }).require("child_process");
       const keyPath = path.join(os.homedir(), ".ssh", "contextos_ed25519");
       if (fs.existsSync(keyPath)) {
         new Notice(t("notice.gitSshKeyExists", { path: keyPath }));
@@ -683,9 +781,12 @@ ${p.content}`).join("\n\n");
         return;
       }
       await new Promise<void>((resolve, reject) => {
-        childProcess.exec(`ssh-keygen -t ed25519 -C "contextos" -f "${keyPath}" -N ""`, (err: unknown, _stdout: string, stderr: string) => {
-          if (err) { reject(new Error((stderr || "").trim() || "ssh-keygen failed")); return; }
-          resolve();
+        const proc = childProcess.spawn("ssh-keygen", ["-t", "ed25519", "-C", "contextos", "-f", keyPath, "-N", ""], {});
+        let errorOutput = "";
+        proc.stderr.on("data", (data: Buffer) => { errorOutput += data.toString(); });
+        proc.on("close", (code) => {
+          if (code === 0) { resolve(); return; }
+          reject(new Error(errorOutput.trim() || "ssh-keygen failed"));
         });
       });
       this.settings = { ...this.settings, gitSshKeyPath: keyPath };
@@ -697,14 +798,14 @@ ${p.content}`).join("\n\n");
   }
 
   async testGitConnection(): Promise<void> {
-    const check = await this.execGit("git --version");
+    const check = await this.execGit(["--version"]);
     if (!check.ok) {
       new Notice(t("notice.gitNotInstalled"));
       return;
     }
     if (this.settings.gitMode === "remote" && this.settings.gitRemoteUrl) {
       const env = this.gitEnv();
-      const result = await this.execGit(`git ls-remote ${this.settings.gitRemoteUrl}`, env);
+      const result = await this.execGit(["ls-remote", this.settings.gitRemoteUrl], env);
       if (result.ok) {
         new Notice(t("notice.gitConnectionSucceeded"));
       } else {
@@ -893,6 +994,14 @@ function parseSelectedQueryPages(response: string, availablePaths: string[], lim
     : [];
   const deduped = Array.from(new Set(selected));
   return deduped.length > 0 ? deduped.slice(0, limit) : availablePaths.slice(0, limit);
+}
+
+function countOperationKinds(plan: import("./types").ChangePlan): string {
+  const counts = new Map<string, number>();
+  for (const op of plan.operations) {
+    counts.set(op.kind, (counts.get(op.kind) ?? 0) + 1);
+  }
+  return Array.from(counts.entries()).map(([k, c]) => `${c} ${k}`).join(", ");
 }
 
 function migrateProviderSettings(settings: LLMWikiSettings): LLMWikiSettings {

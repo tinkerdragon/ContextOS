@@ -7,7 +7,13 @@ When a new source arrives, integrate it into the wiki by:
 1. Reading the source and extracting key information.
 2. Creating or updating a summary page for the source.
 3. Updating relevant entity, concept, and topic pages across the wiki — cross-reference with Obsidian [[wikilinks]], note contradictions, strengthen the synthesis. A single source may touch many pages.
-4. Adding or updating YAML frontmatter on wiki pages (tags, dates, source counts) for Dataview compatibility where appropriate.
+4. Adding or updating YAML frontmatter on wiki pages (tags, dates, source counts) for Dataview compatibility where appropriate. Every wiki page that contains sourced information MUST include a sources field in its frontmatter listing the raw source file path, content hash, and ingest date, like:
+\`\`\`yaml
+sources:
+  - path: raw/example.md
+    hash: a1b2c3d4
+    ingest_date: 2026-07-11
+\`\`\`
 5. Refreshing the configured index ({{indexPath}}) — a content-oriented catalog of every wiki page with [[wikilinks]] and one-line summaries.
 6. Prepending a newest-first entry to the configured log ({{logPath}}) — a chronological record of what happened and when.
 

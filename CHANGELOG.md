@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0 (2026-07-11)
+
+### Added
+- **`max_tokens` per provider**: Configurable max output tokens on each provider entry. Sent with every completion request for gateways that require an explicit limit.
+- **Deterministic link resolution**: Wikilinks in change plans are case-corrected before the preview modal. Unresolved links surface as warnings in the modal and console.
+- **Deterministic lint**: Instant structural lint (broken links, missing frontmatter, orphans, dead index links, duplicate filenames, stale sources) runs before the AI lint call.
+- **Source provenance**: Generated wiki pages include `sources` YAML frontmatter with raw file path, content hash, and ingest date for traceability.
+- **Enhanced preview modal**: Update operations show a colored line-diff (`+`/`-`). Link resolution stats and unresolved-link warnings are displayed in the hero section.
+- **Rollback/undo**: New `Undo last ContextOS change` command reverts the most recently applied change set. History is persisted in `.contextos/history/` (last 20 entries).
+
+### Changed
+- **Connection test**: Now sends a real completion ("ping"), verifies non-empty content, and returns structured diagnostics (status, finish_reason, content preview) instead of a simple pass/fail.
+- **Git execution**: Replaced `child_process.exec` with `spawn` (argument arrays, no shell interpolation) for safer handling of remote URLs and commit messages.
+
+### Fixed
+- Better error messages on truncation (includes content length) and missing content (includes `finish_reason`).
+
 ## 0.3.0 (2026-07-10)
 
 ### Added

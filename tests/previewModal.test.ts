@@ -9,13 +9,14 @@ beforeEach(() => {
   notices.length = 0;
 });
 
-test("applies critical shell width inline so modal widens without external CSS", () => {
-  const modal = new ChangePlanPreviewModal({} as never, {
+test("applies critical shell width inline so modal widens without external CSS", async () => {
+  const app = { vault: { getAbstractFileByPath: () => null, read: async () => "" }, fileManager: { trashFile: async () => {} } };
+  const modal = new ChangePlanPreviewModal(app as never, {
     summary: "Create page",
     operations: []
   });
 
-  modal.onOpen();
+  await modal.onOpen();
   const modalEl = modal.modalEl as unknown as { classes: string[]; styles: Record<string, string> };
 
   expect(modalEl.classes).toContain("contextos-review-modal-shell");
@@ -23,31 +24,39 @@ test("applies critical shell width inline so modal widens without external CSS",
   expect(modalEl.styles["max-width"]).toBe("1120px");
 });
 
-test("renders a content block for an empty-content update so blanking a file is visible", () => {
-  const modal = new ChangePlanPreviewModal({} as never, {
+test("renders a content block for an empty-content update so blanking a file is visible", async () => {
+  const app = {
+    vault: {
+      getAbstractFileByPath: () => null,
+      read: async () => "",
+      getMarkdownFiles: () => []
+    },
+    fileManager: { trashFile: async () => {} }
+  };
+  const modal = new ChangePlanPreviewModal(app as never, {
     summary: "reset",
     operations: [{ kind: "update", path: "wiki/index.md", content: "", rationale: "reset index" }]
   });
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { classes: string[] };
 
   expect(contentEl.classes).toContain("contextos-code-preview");
 });
 
-test("renders a delete operation with its label and path", () => {
+test("renders a delete operation with its label and path", async () => {
   const modal = new ChangePlanPreviewModal({} as never, {
     summary: "Remove orphan",
     operations: [{ kind: "delete", path: "wiki/orphan.md", content: "", rationale: "no supporting source" }]
   });
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { texts: string[] };
 
   expect(contentEl.texts).toEqual(expect.arrayContaining(["DELETE", "wiki/orphan.md", "no supporting source", "1 delete"]));
 });
 
-test("renders a polished card-based review layout", () => {
+test("renders a polished card-based review layout", async () => {
   const modal = new ChangePlanPreviewModal({} as never, {
     summary: "Integrate source notes",
     operations: [
@@ -56,7 +65,7 @@ test("renders a polished card-based review layout", () => {
     ]
   });
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { classes: string[]; texts: string[] };
 
   expect(contentEl.classes).toEqual(expect.arrayContaining([
@@ -83,7 +92,7 @@ test("renders a polished card-based review layout", () => {
   ]));
 });
 
-test("renders prepend operations in preview summaries", () => {
+test("renders prepend operations in preview summaries", async () => {
   const modal = new ChangePlanPreviewModal({} as never, {
     summary: "latest log",
     operations: [
@@ -91,7 +100,7 @@ test("renders prepend operations in preview summaries", () => {
     ]
   }, jest.fn());
 
-  modal.onOpen();
+  await modal.onOpen();
 
   const texts = (modal.contentEl as unknown as { texts: string[] }).texts;
   expect(texts).toContain("1 prepend");
@@ -99,13 +108,13 @@ test("renders prepend operations in preview summaries", () => {
   expect(texts).toContain("wiki/log.md");
 });
 
-test("shows an empty-plan explanation when there are no proposed operations", () => {
+test("shows an empty-plan explanation when there are no proposed operations", async () => {
   const modal = new ChangePlanPreviewModal({} as never, {
     summary: "",
     operations: []
   });
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { texts: string[] };
 
   expect(contentEl.texts).toContain("Review ContextOS changes");
@@ -113,14 +122,14 @@ test("shows an empty-plan explanation when there are no proposed operations", ()
   expect(contentEl.texts).toContain("0 proposed file changes");
 });
 
-test("localizes preview modal chrome in Simplified Chinese", () => {
+test("localizes preview modal chrome in Simplified Chinese", async () => {
   __setLanguage("zh");
   const modal = new ChangePlanPreviewModal({} as never, {
     summary: "",
     operations: [{ kind: "create", path: "wiki/page.md", content: "# Page", rationale: "test" }]
   });
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { texts: string[] };
 
   expect(contentEl.texts).toEqual(expect.arrayContaining([
@@ -145,7 +154,7 @@ test("updates status while applying changes and after success", async () => {
     operations: [{ kind: "create", path: "wiki/page.md", content: "# Page", rationale: "test" }]
   }, (message) => statuses.push(message));
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { buttons: Array<{ onclick: () => Promise<void> }> };
   await contentEl.buttons[0].onclick();
 
@@ -168,7 +177,7 @@ test("updates status when applying changes fails", async () => {
     operations: [{ kind: "create", path: "wiki/page.md", content: "# Page", rationale: "test" }]
   }, (message) => statuses.push(message));
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { buttons: Array<{ onclick: () => Promise<void> }> };
   await contentEl.buttons[0].onclick();
 
@@ -193,7 +202,7 @@ test("shows an error notice when applying changes fails", async () => {
     operations: [{ kind: "create", path: "wiki/page.md", content: "# Page", rationale: "test" }]
   });
 
-  modal.onOpen();
+  await modal.onOpen();
   const contentEl = modal.contentEl as unknown as { buttons: Array<{ onclick: () => Promise<void> }> };
   await contentEl.buttons[0].onclick();
 

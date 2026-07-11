@@ -2,6 +2,15 @@ import { App, TFile } from "obsidian";
 import { ChangePlan, FileOperation, LLMWikiSettings } from "./types";
 import { normalizePath } from "./changePlan";
 import { t } from "./i18n";
+import { resolveWikilinks } from "./linkResolver";
+
+const MAX_HISTORY_ENTRIES = 20;
+
+interface HistoryEntry {
+  plan: ChangePlan;
+  snapshots: FileSnapshot[];
+  appliedAt: string;
+}
 
 export function isRawPath(path: string, settings: LLMWikiSettings): boolean {
   const rawFolder = normalizePath(settings.rawFolder);
@@ -53,11 +62,13 @@ export async function readWikiPages(app: App, paths: string[]): Promise<Array<{ 
 
 export async function applyChangePlan(app: App, plan: ChangePlan): Promise<void> {
   preValidatePlan(app, plan);
+  warnUnresolvedLinks(app, plan);
   const snapshots = await snapshotAffectedFiles(app, plan);
   try {
     for (const operation of plan.operations) {
       await applyOperation(app, operation);
     }
+    await saveHistory(app, { plan, snapshots, appliedAt: new Date().toISOString() });
   } catch (error) {
     await rollback(app, snapshots);
     throw error;
@@ -91,6 +102,25 @@ function preValidatePlan(app: App, plan: ChangePlan): void {
     } else if (existing && !(existing instanceof TFile)) {
       throw new Error(t("error.pathIsFolder", { path }));
     }
+  }
+}
+
+function warnUnresolvedLinks(app: App, plan: ChangePlan): void {
+  try {
+    const existingPaths = app.vault.getMarkdownFiles().map((f) => f.path);
+    const validKinds = new Set(["create", "update"]);
+    for (const operation of plan.operations) {
+      if (!validKinds.has(operation.kind) || !operation.content) continue;
+      const { unresolved } = resolveWikilinks(operation.content, existingPaths);
+      for (const link of unresolved) {
+        console.warn(`[ContextOS] Unresolved wikilink [[${link}]] in ${operation.path}`);
+      }
+      if (!/^---\s*\n[\s\S]*?\bsources:\s/.test(operation.content)) {
+        console.warn(`[ContextOS] Missing sources frontmatter in ${operation.path}`);
+      }
+    }
+  } catch {
+    // getMarkdownFiles may not be available in test environments
   }
 }
 
@@ -179,6 +209,106 @@ async function ensureParentFolders(app: App, path: string): Promise<void> {
     current = current ? `${current}/${part}` : part;
     if (!app.vault.getAbstractFileByPath(current)) {
       await app.vault.createFolder(current);
+    }
+  }
+}
+
+async function saveHistory(app: App, entry: HistoryEntry): Promise<void> {
+  const configDir = getHistoryDir();
+  try {
+    const existing = await loadHistory(app);
+    const hash = hashSimple(JSON.stringify(entry.plan));
+    const fileName = `${Date.now()}-${hash}.json`;
+    const historyPath = `${configDir}/${fileName}`;
+
+    await ensureParentFolders(app, historyPath);
+    await app.vault.create(historyPath, JSON.stringify(entry, null, 2));
+
+    const allEntries = [...existing, fileName];
+    if (allEntries.length > MAX_HISTORY_ENTRIES) {
+      const toRemove = allEntries.slice(0, allEntries.length - MAX_HISTORY_ENTRIES);
+      for (const name of toRemove) {
+        try {
+          const file = app.vault.getAbstractFileByPath(`${configDir}/${name}`);
+          if (file instanceof TFile) await app.fileManager.trashFile(file);
+        } catch {
+          // Best-effort cleanup
+        }
+      }
+    }
+  } catch {
+    // History persistence is best-effort; don't block the main flow
+  }
+}
+
+async function loadHistory(app: App): Promise<string[]> {
+  const configDir = getHistoryDir();
+  try {
+    const files = app.vault.getFiles().filter((f) => f.path.startsWith(`${configDir}/`) && f.path.endsWith(".json"));
+    return files.map((f) => f.name).sort();
+  } catch {
+    return [];
+  }
+}
+
+function getHistoryDir(): string {
+  return ".contextos/history";
+}
+
+function hashSimple(content: string): string {
+  let fnv = 2166136261;
+  for (let i = 0; i < content.length; i++) {
+    fnv = Math.imul(fnv ^ content.charCodeAt(i), 16777619);
+  }
+  return (fnv >>> 0).toString(16).padStart(8, "0");
+}
+
+export async function getLatestHistoryEntry(app: App): Promise<HistoryEntry | undefined> {
+  const configDir = getHistoryDir();
+  try {
+    const entries = await loadHistory(app);
+    if (entries.length === 0) return undefined;
+    const latest = entries[entries.length - 1];
+    const file = app.vault.getAbstractFileByPath(`${configDir}/${latest}`);
+    if (!(file instanceof TFile)) return undefined;
+    const content = await app.vault.read(file);
+    return JSON.parse(content) as HistoryEntry;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function revertChangePlan(app: App, entry: HistoryEntry): Promise<void> {
+  const snapshotMap = new Map(entry.snapshots.map((s) => [s.path, s]));
+
+  for (const operation of entry.plan.operations) {
+    if (operation.kind === "create") {
+      const existing = app.vault.getAbstractFileByPath(operation.path);
+      if (existing instanceof TFile) await app.fileManager.trashFile(existing);
+    } else if (operation.kind === "update" || operation.kind === "append" || operation.kind === "prepend") {
+      const snapshot = snapshotMap.get(operation.path);
+      if (!snapshot || !snapshot.existed || snapshot.content === null) continue;
+      const existing = app.vault.getAbstractFileByPath(operation.path);
+      if (existing instanceof TFile) {
+        await app.vault.modify(existing, snapshot.content);
+      }
+    } else if (operation.kind === "delete") {
+      const snapshot = snapshotMap.get(operation.path);
+      if (!snapshot || !snapshot.existed || snapshot.content === null) continue;
+      await ensureParentFolders(app, operation.path);
+      await app.vault.create(operation.path, snapshot.content);
+    }
+  }
+
+  const configDir = getHistoryDir();
+  const entries = await loadHistory(app);
+  if (entries.length > 0) {
+    const latest = entries[entries.length - 1];
+    try {
+      const file = app.vault.getAbstractFileByPath(`${configDir}/${latest}`);
+      if (file instanceof TFile) await app.fileManager.trashFile(file);
+    } catch {
+      // Best-effort cleanup
     }
   }
 }

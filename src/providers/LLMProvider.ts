@@ -3,6 +3,7 @@ export interface CompleteRequest {
   apiUrl?: string;
   model: string;
   prompt: string;
+  maxTokens?: number;
 }
 
 export interface VisionCompleteRequest {
@@ -11,12 +12,14 @@ export interface VisionCompleteRequest {
   model: string;
   prompt: string;
   imageDataUrl: string;
+  maxTokens?: number;
 }
 
 export interface ConnectionTestRequest {
   apiKey: string;
   apiUrl?: string;
   model: string;
+  maxTokens?: number;
 }
 
 export interface ChatMessage {
@@ -30,6 +33,17 @@ export interface ChatRequest {
   model: string;
   messages: ChatMessage[];
   onToken?: (token: string) => void;
+  maxTokens?: number;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  status?: number;
+  finishReason?: string;
+  hasContent?: boolean;
+  contentPreview?: string;
+  error?: string;
+  errorKind?: string;
 }
 
 export interface LLMProvider {
@@ -37,5 +51,5 @@ export interface LLMProvider {
   complete(request: CompleteRequest): Promise<string>;
   completeVision(request: VisionCompleteRequest): Promise<string>;
   chat(request: ChatRequest): Promise<string>;
-  testConnection(request: ConnectionTestRequest): Promise<void>;
+  testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult>;
 }

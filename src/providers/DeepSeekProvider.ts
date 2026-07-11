@@ -1,5 +1,5 @@
-import { ChatRequest, CompleteRequest, ConnectionTestRequest, VisionCompleteRequest } from "./LLMProvider";
-import { BaseOpenAICompatibleProvider, BaseProviderOptions, HttpClient, defaultHttpClient, ProviderError } from "./BaseOpenAICompatibleProvider";
+import { ChatRequest, CompleteRequest, VisionCompleteRequest } from "./LLMProvider";
+import { BaseOpenAICompatibleProvider, BaseProviderOptions, HttpClient, defaultHttpClient } from "./BaseOpenAICompatibleProvider";
 
 const DEFAULT_DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -17,7 +17,7 @@ export class DeepSeekProvider extends BaseOpenAICompatibleProvider {
       [
         { role: "system", content: "You are a careful ContextOS maintainer. Return strict JSON only." },
         { role: "user", content: request.prompt }
-      ], true
+      ], true, request.maxTokens
     );
   }
 
@@ -33,36 +33,14 @@ export class DeepSeekProvider extends BaseOpenAICompatibleProvider {
             { type: "image_url", image_url: { url: request.imageDataUrl } }
           ]
         }
-      ], false
+      ], false, request.maxTokens
     );
   }
 
   async chat(request: ChatRequest): Promise<string> {
     return this.completeMessages(
       request.apiKey, request.apiUrl || this.defaultApiUrl, request.model,
-      request.messages, false, request.onToken
+      request.messages, false, request.maxTokens, request.onToken
     );
-  }
-
-  async testConnection(request: ConnectionTestRequest): Promise<void> {
-    const apiUrl = request.apiUrl || this.defaultApiUrl;
-    const response = await this.withTimeout(this.httpClient({
-      url: apiUrl,
-      options: {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${request.apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: request.model,
-          messages: [{ role: "user", content: "ping" }],
-          max_tokens: 1
-        })
-      }
-    }));
-    if (response.status < 200 || response.status >= 300) {
-      throw new ProviderError("connection", `${response.status} ${response.text}`);
-    }
   }
 }

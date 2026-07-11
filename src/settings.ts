@@ -1,7 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting, setIcon } from "obsidian";
 import LLMWikiPlugin from "./main";
 import { t } from "./i18n";
-import { OpenAIProvider, OpenAIProviderError } from "./providers/OpenAIProvider";
+import { OpenAIProvider } from "./providers/OpenAIProvider";
 import { providerRegistry } from "./providers/ProviderRegistry";
 import { LLMWikiSettings, ProviderConfig, LLMProviderType, LLM_PROVIDER_TYPES } from "./types";
 
@@ -341,6 +341,11 @@ export class LLMWikiSettingTab extends PluginSettingTab {
 
     this.renderProviderField(body, t("settings.providerModel"), { type: "text", value: provider.model, onChange: async (value: string) => {
       await this.updateProvider(provider.id, { model: value });
+    }});
+
+    this.renderProviderField(body, t("settings.providerMaxTokens"), { type: "text", value: String(provider.maxTokens ?? ""), onChange: async (value: string) => {
+      const n = value.trim() ? Number(value.trim()) : undefined;
+      await this.updateProvider(provider.id, { maxTokens: Number.isFinite(n) ? Math.max(1, Math.round(n as number)) : undefined });
     }});
   }
 
@@ -735,12 +740,19 @@ export class LLMWikiSettingTab extends PluginSettingTab {
     } else {
       provider = new OpenAIProvider(undefined, { timeoutMs: this.plugin.settings.requestTimeoutMs });
     }
-    await provider.testConnection({
+    const result = await provider.testConnection({
       apiKey: activeProvider.apiKey,
       apiUrl: activeProvider.apiUrl,
       model: activeProvider.model
     });
-    new Notice(t("notice.openAIConnectionSucceeded"));
+    if (result.ok) {
+      const detail = result.hasContent ? ` (content ok${result.contentPreview ? `, "${result.contentPreview}"` : ""})` : "";
+      new Notice(t("notice.openAIConnectionSucceeded") + detail);
+    } else {
+      new Notice(t("notice.openAIConnectionFailed", {
+        message: result.error ?? `Status ${result.status ?? "?"}, content: ${result.hasContent ? "yes" : "no"}, finish_reason: ${result.finishReason ?? "missing"}`
+      }));
+    }
   }
 
   private addConnectionTest(): void {
@@ -753,13 +765,6 @@ export class LLMWikiSettingTab extends PluginSettingTab {
           button.setDisabled(true);
           try {
             await this.runLLMConnectionTest();
-          } catch (error) {
-            const message = error instanceof OpenAIProviderError && error.kind === "connection"
-              ? error.message
-              : error instanceof Error
-                ? error.message
-                : t("error.unknown");
-            new Notice(t("notice.openAIConnectionFailed", { message }));
           } finally {
             button.setDisabled(false);
           }

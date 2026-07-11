@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { ChatRequest, CompleteRequest, ConnectionTestRequest, LLMProvider, VisionCompleteRequest } from "./LLMProvider";
+import { ChatRequest, CompleteRequest, ConnectionTestRequest, ConnectionTestResult, LLMProvider, VisionCompleteRequest } from "./LLMProvider";
 import { ProviderError } from "./BaseOpenAICompatibleProvider";
 
 const DEFAULT_GEMINI_API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -82,20 +82,38 @@ export class GeminiProvider implements LLMProvider {
     return accumulated;
   }
 
-  async testConnection(request: ConnectionTestRequest): Promise<void> {
-    const url = `${request.apiUrl || `${DEFAULT_GEMINI_API_URL_BASE}/${request.model}:generateContent`}?key=${request.apiKey}`;
-    const response = await requestUrl({
-      url,
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: "ping" }] }],
-        generationConfig: { maxOutputTokens: 1 }
-      }),
-      throw: false
-    });
-    if (response.status < 200 || response.status >= 300) {
-      throw new ProviderError("connection", `${response.status}: ${response.text}`);
+  async testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
+    try {
+      const maxTokens = request.maxTokens ?? 10;
+      const url = `${request.apiUrl || `${DEFAULT_GEMINI_API_URL_BASE}/${request.model}:generateContent`}?key=${request.apiKey}`;
+      const response = await requestUrl({
+        url,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: "Say 'ok'" }] }],
+          generationConfig: { maxOutputTokens: maxTokens }
+        }),
+        throw: false
+      });
+      if (response.status < 200 || response.status >= 300) {
+        return { ok: false, status: response.status, error: `${response.status}: ${response.text}`, errorKind: "connection" };
+      }
+      const parsed = JSON.parse(response.text) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      };
+      const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+      const hasContent = typeof content === "string" && content.trim().length > 0;
+      return {
+        ok: hasContent,
+        status: response.status,
+        hasContent,
+        contentPreview: typeof content === "string" ? content.slice(0, 200) : undefined,
+        error: hasContent ? undefined : "No text content in response"
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: message, errorKind: "connection" };
     }
   }
 

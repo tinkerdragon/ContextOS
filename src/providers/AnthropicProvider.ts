@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { ChatRequest, CompleteRequest, ConnectionTestRequest, LLMProvider, VisionCompleteRequest } from "./LLMProvider";
+import { ChatRequest, CompleteRequest, ConnectionTestRequest, ConnectionTestResult, LLMProvider, VisionCompleteRequest } from "./LLMProvider";
 import { ProviderError } from "./BaseOpenAICompatibleProvider";
 
 const DEFAULT_ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
@@ -92,24 +92,40 @@ export class AnthropicProvider implements LLMProvider {
     return accumulated;
   }
 
-  async testConnection(request: ConnectionTestRequest): Promise<void> {
-    const response = await requestUrl({
-      url: request.apiUrl || DEFAULT_ANTHROPIC_API_URL,
-      method: "POST",
-      headers: {
-        "x-api-key": request.apiKey,
-        "anthropic-version": DEFAULT_ANTHROPIC_VERSION,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: request.model,
-        max_tokens: 1,
-        messages: [{ role: "user", content: "ping" }]
-      }),
-      throw: false
-    });
-    if (response.status < 200 || response.status >= 300) {
-      throw new ProviderError("connection", `${response.status}: ${response.text}`);
+  async testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
+    try {
+      const maxTokens = request.maxTokens ?? 10;
+      const response = await requestUrl({
+        url: request.apiUrl || DEFAULT_ANTHROPIC_API_URL,
+        method: "POST",
+        headers: {
+          "x-api-key": request.apiKey,
+          "anthropic-version": DEFAULT_ANTHROPIC_VERSION,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: request.model,
+          max_tokens: maxTokens,
+          messages: [{ role: "user", content: "Say 'ok'" }]
+        }),
+        throw: false
+      });
+      if (response.status < 200 || response.status >= 300) {
+        return { ok: false, status: response.status, error: `${response.status}: ${response.text}`, errorKind: "connection" };
+      }
+      const parsed = JSON.parse(response.text) as { content?: Array<{ type: string; text?: string }> };
+      const content = parsed.content?.find((c) => c.type === "text")?.text;
+      const hasContent = typeof content === "string" && content.trim().length > 0;
+      return {
+        ok: hasContent,
+        status: response.status,
+        hasContent,
+        contentPreview: typeof content === "string" ? content.slice(0, 200) : undefined,
+        error: hasContent ? undefined : "No text content in response"
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: message, errorKind: "connection" };
     }
   }
 

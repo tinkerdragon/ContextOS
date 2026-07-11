@@ -23,6 +23,7 @@ export interface ProviderConfig {
   apiUrl: string;
   model: string;
   enabled: boolean;
+  maxTokens?: number;
 }
 
 export interface LLMWikiSettings {
@@ -97,4 +98,25 @@ export interface WikiContext {
   wikiPages?: Array<{ path: string; content: string }>;
   /** Paths of raw sources that still exist, so lint can detect orphaned wiki pages. */
   rawPaths?: string[];
+}
+
+export interface BrokenLink {
+  pagePath: string;
+  linkTarget: string;
+}
+
+export interface StalePage {
+  pagePath: string;
+  sourcePath: string;
+  storedHash: string;
+  currentHash: string;
+}
+
+export interface DeterministicLintReport {
+  brokenLinks: BrokenLink[];
+  missingFrontmatter: string[];
+  orphans: string[];
+  deadIndexLinks: string[];
+  duplicates: string[];
+  stalePages: StalePage[];
 }

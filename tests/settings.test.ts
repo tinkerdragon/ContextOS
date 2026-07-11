@@ -133,7 +133,7 @@ test("request timeout control rejects non-positive input and stores seconds as m
 });
 
 test("OpenAI connection test reports success for HTTP 2xx", async () => {
-  jest.spyOn(obsidian, "requestUrl").mockResolvedValue({ status: 204, text: "" } as never);
+  jest.spyOn(obsidian, "requestUrl").mockResolvedValue({ status: 200, text: JSON.stringify({ choices: [{ message: { content: "ok" } }] }) } as never);
   const plugin = new (LLMWikiPlugin as unknown as { new(): LLMWikiPlugin })();
   plugin.settings = {
     ...plugin.settings,
@@ -147,7 +147,7 @@ test("OpenAI connection test reports success for HTTP 2xx", async () => {
   const button = (tab.containerEl as unknown as { buttons: Button[] }).buttons.find((candidate) => candidate.buttonText === "Test connection")!;
   await button.onclick!();
 
-  expect(notices).toContain("OpenAI connection test succeeded.");
+  expect(notices.some((n) => n.startsWith("OpenAI connection test succeeded."))).toBe(true);
   expect(button.disabled).toBe(false);
 });
 

@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { ChatRequest, CompleteRequest, ConnectionTestRequest, LLMProvider, VisionCompleteRequest } from "./LLMProvider";
+import { ChatRequest, CompleteRequest, ConnectionTestRequest, ConnectionTestResult, LLMProvider, VisionCompleteRequest } from "./LLMProvider";
 
 export type HttpRequest = {
   url: string;
@@ -126,10 +126,11 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
     model: string,
     messages: OpenAIMessage[],
     rejectOnTruncation = false,
+    maxTokens?: number,
     onToken?: (token: string) => void
   ): Promise<string> {
-    if (onToken) return this.completeMessagesStreaming(apiKey, apiUrl, model, messages, onToken);
-    return this.completeMessagesNonStreaming(apiKey, apiUrl, model, messages, rejectOnTruncation);
+    if (onToken) return this.completeMessagesStreaming(apiKey, apiUrl, model, messages, maxTokens, onToken);
+    return this.completeMessagesNonStreaming(apiKey, apiUrl, model, messages, rejectOnTruncation, maxTokens);
   }
 
   private async completeMessagesNonStreaming(
@@ -137,8 +138,16 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
     apiUrl: string,
     model: string,
     messages: OpenAIMessage[],
-    rejectOnTruncation = false
+    rejectOnTruncation = false,
+    maxTokens?: number
   ): Promise<string> {
+    const body: Record<string, unknown> = {
+      model,
+      messages,
+      temperature: 0.2
+    };
+    if (maxTokens && maxTokens > 0) body["max_tokens"] = maxTokens;
+
     const response = await this.sendWithRetry({
       url: apiUrl || this.defaultApiUrl,
       options: {
@@ -147,11 +156,7 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.2
-        })
+        body: JSON.stringify(body)
       }
     });
 
@@ -162,10 +167,13 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
     const parsed = parseOpenAIResponse(response.text);
     const choice = parsed.choices?.[0];
     const content = choice?.message?.content;
-    if (rejectOnTruncation && choice?.finish_reason === "length") {
-      throw new ProviderError("truncated", "Response was truncated before completion");
+    const finishReason = choice?.finish_reason;
+    if (rejectOnTruncation && finishReason === "length") {
+      throw new ProviderError("truncated", `Response truncated after ${content?.length ?? 0} chars. Increase max_tokens.`);
     }
-    if (!content) throw new ProviderError("missing-content", "Response did not include message content");
+    if (!content) {
+      throw new ProviderError("missing-content", `No message content returned (finish_reason: ${finishReason ?? "missing"}). Check max_tokens and model compatibility.`);
+    }
     return content;
   }
 
@@ -174,8 +182,17 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
     apiUrl: string,
     model: string,
     messages: OpenAIMessage[],
+    maxTokens: number | undefined,
     onToken: (token: string) => void
   ): Promise<string> {
+    const body: Record<string, unknown> = {
+      model,
+      messages,
+      temperature: 0.2,
+      stream: true
+    };
+    if (maxTokens && maxTokens > 0) body["max_tokens"] = maxTokens;
+
     const response = await this.sendWithRetry({
       url: apiUrl || this.defaultApiUrl,
       options: {
@@ -185,12 +202,7 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
           "Content-Type": "application/json",
           Accept: "text/event-stream"
         },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.2,
-          stream: true
-        })
+        body: JSON.stringify(body)
       }
     });
 
@@ -222,8 +234,49 @@ export abstract class BaseOpenAICompatibleProvider implements LLMProvider {
     return accumulated;
   }
 
+  async testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
+    try {
+      const apiUrl = request.apiUrl || this.defaultApiUrl;
+      const body: Record<string, unknown> = {
+        model: request.model,
+        messages: [{ role: "user", content: "ping" }]
+      };
+      const maxTokens = request.maxTokens;
+      if (maxTokens && maxTokens > 0) body["max_tokens"] = maxTokens;
+      const response = await this.withTimeout(this.httpClient({
+        url: apiUrl,
+        options: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${request.apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        }
+      }));
+      if (response.status < 200 || response.status >= 300) {
+        return { ok: false, status: response.status, error: `${response.status} ${response.text}`, errorKind: "connection" };
+      }
+      const parsed = parseOpenAIResponse(response.text);
+      const choice = parsed.choices?.[0];
+      const content = choice?.message?.content;
+      const finishReason = choice?.finish_reason;
+      const hasContent = typeof content === "string" && content.trim().length > 0;
+      return {
+        ok: hasContent,
+        status: response.status,
+        finishReason,
+        hasContent,
+        contentPreview: typeof content === "string" ? content.slice(0, 200) : undefined,
+        error: hasContent ? undefined : `No content returned (finish_reason: ${finishReason ?? "missing"})`
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: message, errorKind: "connection" };
+    }
+  }
+
   abstract complete(request: CompleteRequest): Promise<string>;
   abstract completeVision(request: VisionCompleteRequest): Promise<string>;
   abstract chat(request: ChatRequest): Promise<string>;
-  abstract testConnection(request: ConnectionTestRequest): Promise<void>;
 }

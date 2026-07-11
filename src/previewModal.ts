@@ -1,19 +1,21 @@
-import { App, Modal, Notice } from "obsidian";
+import { App, Modal, Notice, TFile } from "obsidian";
 import { t } from "./i18n";
 import { ChangePlan, FileOperationKind } from "./types";
 import { applyChangePlan } from "./vaultOps";
+import { ResolvedLinks } from "./linkResolver";
 
 export class ChangePlanPreviewModal extends Modal {
   constructor(
     app: App,
     private readonly plan: ChangePlan,
     private readonly updateStatus: (message: string) => void = () => undefined,
-    private readonly onApplySuccess: () => Promise<void> = async () => undefined
+    private readonly onApplySuccess: () => Promise<void> = async () => undefined,
+    private readonly resolvedLinks?: ResolvedLinks
   ) {
     super(app);
   }
 
-  onOpen(): void {
+  async onOpen(): Promise<void> {
     this.modalEl.addClass("contextos-review-modal-shell");
     this.applyStyles(this.modalEl, {
       width: "min(1120px, 96vw)",
@@ -46,6 +48,26 @@ export class ChangePlanPreviewModal extends Modal {
         count,
         kind: this.getOperationLabel(kind).toLocaleLowerCase()
       }));
+    }
+    if (this.resolvedLinks && (this.resolvedLinks.resolved.length > 0 || this.resolvedLinks.unresolved.length > 0)) {
+      this.addStatChip(stats, t("preview.linksResolved", {
+        total: this.resolvedLinks.resolved.length + this.resolvedLinks.unresolved.length,
+        resolved: this.resolvedLinks.resolved.length
+      }));
+    }
+
+    if (this.resolvedLinks && this.resolvedLinks.unresolved.length > 0) {
+      const warning = hero.createDiv();
+      warning.addClass("contextos-warning-banner");
+      this.applyStyles(warning, {
+        margin: "12px 0 0",
+        padding: "8px 12px",
+        background: "var(--color-orange-100)",
+        "border-radius": "8px",
+        "font-size": "13px",
+        color: "var(--text-warning)"
+      });
+      warning.setText(t("preview.unresolvedLinksWarning", { count: this.resolvedLinks.unresolved.length }));
     }
 
     const changes = this.contentEl.createDiv();
@@ -87,7 +109,19 @@ export class ChangePlanPreviewModal extends Modal {
 
       section.createEl("p", { text: operation.rationale });
       if (operation.kind !== "delete") {
-        const preview = section.createEl("pre", { text: operation.content });
+        let displayContent = operation.content;
+        if (operation.kind === "update") {
+          try {
+            const existing = this.app.vault.getAbstractFileByPath(operation.path);
+            if (existing instanceof TFile) {
+              const current = await this.app.vault.read(existing);
+              displayContent = this.computeDiff(current, operation.content);
+            }
+          } catch {
+            // If we can't read the existing file, show the new content as-is
+          }
+        }
+        const preview = section.createEl("pre");
         preview.addClass("contextos-code-preview");
         this.applyStyles(preview, {
           "max-height": "380px",
@@ -96,6 +130,11 @@ export class ChangePlanPreviewModal extends Modal {
           "border-radius": "12px",
           "white-space": "pre-wrap"
         });
+        if (operation.kind === "update") {
+          this.renderDiff(preview, displayContent);
+        } else {
+          preview.setText(displayContent);
+        }
       }
     }
 
@@ -132,6 +171,92 @@ export class ChangePlanPreviewModal extends Modal {
     };
     const cancelButton = actions.createEl("button", { text: t("preview.cancel") });
     cancelButton.onclick = () => this.close();
+  }
+
+  private computeDiff(oldContent: string, newContent: string): string {
+    const oldLines = oldContent.split("\n");
+    const newLines = newContent.split("\n");
+
+    const lcs = this.longestCommonSubsequence(oldLines, newLines);
+
+    const result: string[] = [];
+    let oi = 0;
+    let ni = 0;
+
+    for (const line of lcs) {
+      while (oi < oldLines.length && oldLines[oi] !== line) {
+        result.push(`- ${oldLines[oi]}`);
+        oi++;
+      }
+      while (ni < newLines.length && newLines[ni] !== line) {
+        result.push(`+ ${newLines[ni]}`);
+        ni++;
+      }
+      result.push(`  ${line}`);
+      oi++;
+      ni++;
+    }
+
+    while (oi < oldLines.length) {
+      result.push(`- ${oldLines[oi]}`);
+      oi++;
+    }
+    while (ni < newLines.length) {
+      result.push(`+ ${newLines[ni]}`);
+      ni++;
+    }
+
+    return result.join("\n");
+  }
+
+  private longestCommonSubsequence(a: string[], b: string[]): string[] {
+    const m = a.length;
+    const n = b.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (a[i - 1] === b[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+
+    const result: string[] = [];
+    let i = m;
+    let j = n;
+    while (i > 0 && j > 0) {
+      if (a[i - 1] === b[j - 1]) {
+        result.unshift(a[i - 1]);
+        i--;
+        j--;
+      } else if (dp[i - 1][j] > dp[i][j - 1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+
+    return result;
+  }
+
+  private renderDiff(preview: HTMLElement, diffContent: string): void {
+    const lines = diffContent.split("\n");
+    for (const line of lines) {
+      const lineEl = preview.createDiv();
+      if (line.startsWith("+ ")) {
+        lineEl.setText(line);
+        this.applyStyles(lineEl, { color: "var(--color-green)", background: "var(--color-green-100)" });
+      } else if (line.startsWith("- ")) {
+        lineEl.setText(line);
+        this.applyStyles(lineEl, { color: "var(--color-red)", background: "var(--color-red-100)" });
+      } else {
+        lineEl.setText(line);
+        this.applyStyles(lineEl, { opacity: "0.7" });
+      }
+    }
   }
 
   private applyStyles(element: HTMLElement, styles: Record<string, string>): void {
